@@ -269,6 +269,6 @@ LIBDPDK_LDFLAGS := $(shell pkg-config --libs libdpdk)
 CETUS_CFLAGS += $(LIBDPDK_CFLAGS)
 CETUS_LIB += $(LIBDPDK_LDFLAGS)
 
-cetus: $(SRC)/cetus.c $(SRC)/netpipe.c $(SRC)/netpipe.h 
+cetus: $(SRC)/cetus.c $(SRC)/netpipe.h 
 	$(CC) $(CETUS_CFLAGS) $(SRC)/cetus.c $(SRC)/netpipe.c -o NPcetus \
         -DTCP $(CETUS_INC) $(CETUS_LIB)
