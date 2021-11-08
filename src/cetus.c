@@ -5,12 +5,13 @@
 
 #include "mthread.h"
 
+int doing_reset = 0;
+
 void Init(ArgStruct *p, int* pargc, char*** pargv) {
-   p->reset_conn = 0; /* Default to not resetting connection */
-   p->prot.sndbufsz = p->prot.rcvbufsz = 0;
-   p->tr = 0;     /* The transmitter will be set using the -h host flag. */
-   p->rcv = 1;
-   mtcp_init("NPmtcp.conf");
+    p->reset_conn = 0; /* Default to not resetting connection */
+    p->prot.sndbufsz = p->prot.rcvbufsz = 0;
+    p->tr = 0;     /* The transmitter will be set using the -h host flag. */
+    p->rcv = 1;
 }
 
 void Setup(ArgStruct *p) {
@@ -36,7 +37,7 @@ void Setup(ArgStruct *p) {
     bzero((char *) lsin1, sizeof(*lsin1));
     bzero((char *) lsin2, sizeof(*lsin2));  
 
-    if ((sockfd = cetus_socket(mctx, socket_family, SOCK_STREAM, 0)) < 0){ 
+    if ((sockfd = cetus_socket(socket_family, SOCK_STREAM, 0)) < 0){ 
     printf("NetPIPE: can't open stream socket! errno=%d\n", errno);
     exit(-4);
     }
@@ -266,8 +267,8 @@ void RecvRepeat(ArgStruct *p, int *rpt) {
 void * netpipe_main(void * arg) {
     struct cetus_param * param = (struct cetus_param *)arg;
 
-    int argc = arg->argc;
-    char ** argv = arg->argv;
+    int argc = param->argc;
+    char ** argv = param->argv;
 
     FILE        *out;           /* Output data file                          */
     char        s[255],s2[255],delim[255],*pstr; /* Generic strings          */
@@ -1441,69 +1442,26 @@ int netpipe_test(void * arg) {
 
     int ret;
     mthread_t mid;
-
-    num_conn = 0;
-
-    info = (struct conn_info *)calloc(MAX_CONNECT, sizeof(struct conn_info));
-
-    // for (int i = 0; i < MAX_CONNECT; i++) {
-    //     info[i].buff = (char *)calloc(1, BUFF_SIZE);
-    // }
     
-    events = (struct cetus_epoll_event *)calloc(NR_CETUS_EPOLL_EVENTS, CETUS_EPOLL_EVENT_SIZE);
-    
-    sail_init();
+    // sail_init();
     
     /* Create polling thread */
     if((ret = mthread_create(&mid, NULL, netpipe_main, arg)) < 0) {
-        printf("mthread_create() error: %d\n", ret);
+        fprintf(stdout, "mthread_create() error: %d\n", ret);
         exit(1);
     } else {
-        logging(INFO, "[%s on core %d] server_thread create done(mid: %lu)", __func__, lcore_id, mid);
+        fprintf(stdout, "[%s on core %d] server_thread create done(mid: %lu)", __func__, lcore_id, mid);
     }
 
     /* Test mthread_join */
     if ((ret = mthread_join(mid, NULL)) < 0) {
-        printf("mthread_join() error: %d\n", ret);
+        fprintf(stdout, "mthread_join() error: %d\n", ret);
         exit(1);
     }
 
-    logging(INFO, "[%s on core %d] mthread %lu joined!", __func__, lcore_id, mid);
+    fprintf(stdout, "[%s on core %d] mthread %lu joined!", __func__, lcore_id, mid);
 
-    sail_exit();
-
-    logging(INFO, " ========== [core %d] Test end ==========", lcore_id);
-
-    long long recv_bytes, send_bytes;
-    recv_bytes = send_bytes = 0;
-
-    for (int i = 0; i < num_conn; i++) {
-        recv_bytes += info[i].recv_bytes;
-        send_bytes += info[i].send_bytes;
-    }
-
-    long long start_time = TIMEVAL_TO_USEC(start);
-    long long end_time = TIMEVAL_TO_USEC(end);
-    double total_time = (end_time - start_time) / 1000000.00;
-
-    char * file_name = (char *)calloc(1, 32);
-
-	snprintf(file_name, 31, "throughput_core_%d.txt", lcore_id);
-	FILE * thp_file = fopen(file_name, "a+");
-
-    char * result_buff = (char *)calloc(1, 512);
-
-    printf(" [PAYLOAD] recv bytes: %llu (Mb), send rate: %llu (Mb)\n", recv_bytes, send_bytes);
-    
-    snprintf(result_buff, 511, " [PAYLOAD] connection: %d, recv rate: %.2f (Mbps), send rate: %.2f (Mbps)\n", 
-            num_conn, (recv_bytes * 8.0) / (total_time * 1000 * 1000), (send_bytes * 8.0) / (total_time * 1000 * 1000));
-
-    printf("%s", result_buff);
-
-	fwrite(result_buff, 1, strlen(result_buff), thp_file);
-    fprintf(thp_file, " ====================\n");
-	
-	fclose(thp_file);
+    // sail_exit();
 }
 
 int main(int argc, char ** argv) {
