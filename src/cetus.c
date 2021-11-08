@@ -650,8 +650,9 @@ void * netpipe_main(void * arg) {
                         printf("Attach to pid %d and set debug_wait to 0 to conttinue\n", getpid());
                         break;
 
-            default:    PrintUsage(); 
-                        exit(-12);
+            // default:    PrintUsage(); 
+            //             exit(-12);
+            default:    break; 
         }
     }
 
