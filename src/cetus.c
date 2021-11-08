@@ -390,7 +390,7 @@ void * netpipe_main(void * arg) {
 
     /* Parse the arguments. See Usage for description */
     optind = 1;
-    while ((c = getopt(argc, argv, "AXSO:rIiPszgfaB2h:p:o:l:u:b:m:n:t:c:d:D:P:")) != -1) {\
+    while ((c = getopt(argc, argv, "AXSO:rIiPszgfaB2h:p:o:l:u:b:m:n:t:c:d:P:D:")) != -1) {
         switch(c) {
 	        case 'A':   args.use_sdp=1;
 		                break;
@@ -801,8 +801,7 @@ void * netpipe_main(void * arg) {
 
         /* Do setup for no-cache mode, using two distinct buffers. */
 
-    if (!args.cache)
-    {
+    if (!args.cache) {
 
         /* Allocate dummy pool of memory to flush cache with */
 
