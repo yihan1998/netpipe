@@ -389,280 +389,274 @@ void * netpipe_main(void * arg) {
 #if ! defined(TCGMSG)
 
     /* Parse the arguments. See Usage for description */
-    while ((c = getopt(argc, argv, "AXSO:rIiPszgfaB2h:p:o:l:u:b:m:n:t:c:d:D:P:")) != -1)
-    {
-        switch(c)
-        {
-	    case 'A':
-		      args.use_sdp=1;
-		      break;
-            case 'O':
-                      strcpy(s2,optarg);
-                      strcpy(delim,",");
-                      if((pstr=strtok(s2,delim))!=NULL) {
-                         args.soffset=atoi(pstr);
-                         if((pstr=strtok((char *)NULL,delim))!=NULL)
+    optind = 1;
+    while ((c = getopt(argc, argv, "AXSO:rIiPszgfaB2h:p:o:l:u:b:m:n:t:c:d:D:P:")) != -1) {\
+        switch(c) {
+	        case 'A':   args.use_sdp=1;
+		                break;
+            case 'O':   strcpy(s2,optarg);
+                        strcpy(delim,",");
+                        if((pstr=strtok(s2,delim))!=NULL) {
+                            args.soffset=atoi(pstr);
+                            if((pstr=strtok((char *)NULL,delim))!=NULL)
                             args.roffset=atoi(pstr);
-                         else /* only got one token */
+                            else /* only got one token */
                             args.roffset=args.soffset;
-                      } else {
-                         args.soffset=0; args.roffset=0;
-                      }
-                      printf("Transmit buffer offset: %d\nReceive buffer offset: %d\n",args.soffset,args.roffset);
-                      break;
-            case 'p': perturbation = atoi(optarg);
-                      if( perturbation > 0 ) {
-                         printf("Using a perturbation value of %d\n\n", perturbation);
-                      } else {
-                         perturbation = 0;
-                         printf("Using no perturbations\n\n");
-                      }
-                      break;
+                        } else {
+                            args.soffset=0; args.roffset=0;
+                        }
+                        printf("Transmit buffer offset: %d\nReceive buffer offset: %d\n",args.soffset,args.roffset);
+                        break;
+            case 'p':   perturbation = atoi(optarg);
+                        if( perturbation > 0 ) {
+                            printf("Using a perturbation value of %d\n\n", perturbation);
+                        } else {
+                            perturbation = 0;
+                            printf("Using no perturbations\n\n");
+                        }
+                        break;
 
-            case 'B': if(integCheck == 1) {
-                        fprintf(stderr, "Integrity check not supported with prepost burst\n");
-                        exit(-1);
-                      }
-                      args.preburst = 1;
-                      asyncReceive = 1;
-                      printf("Preposting all receives before a timed run.\n");
-                      printf("Some would consider this cheating,\n");
-                      printf("but it is needed to match some vendor tests.\n"); fflush(stdout);
-                      break;
+            case 'B':   if(integCheck == 1) {
+                            fprintf(stderr, "Integrity check not supported with prepost burst\n");
+                            exit(-1);
+                        }
+                        args.preburst = 1;
+                        asyncReceive = 1;
+                        printf("Preposting all receives before a timed run.\n");
+                        printf("Some would consider this cheating,\n");
+                        printf("but it is needed to match some vendor tests.\n"); fflush(stdout);
+                        break;
 
-            case 'I': args.cache = 0;
-                      printf("Performance measured without cache effects\n\n"); fflush(stdout);
-                      break;
+            case 'I':   args.cache = 0;
+                        printf("Performance measured without cache effects\n\n"); fflush(stdout);
+                        break;
 
-            case 'o': strcpy(s,optarg);
-                      printf("Sending output to %s\n", s); fflush(stdout);
-                      break;
+            case 'o':   strcpy(s,optarg);
+                        printf("Sending output to %s\n", s); fflush(stdout);
+                        break;
 
-            case 's': streamopt = 1;
-                      printf("Streaming in one direction only.\n\n");
+            case 's':   streamopt = 1;
+                        printf("Streaming in one direction only.\n\n");
 #if defined(TCP) && ! defined(INFINIBAND) && !defined(OPENIB)
-                      printf("Sockets are reset between trials to avoid\n");
-                      printf("degradation from a collapsing window size.\n\n");
+                        printf("Sockets are reset between trials to avoid\n");
+                        printf("degradation from a collapsing window size.\n\n");
 #endif
-                      args.reset_conn = 1;
-                      printf("Streaming does not provide an accurate\n");
-                      printf("measurement of the latency since small\n");
-                      printf("messages may get bundled together.\n\n");
-                      if( args.bidir == 1 ) {
-                        printf("You can't use -s and -2 together\n");
-                        exit(0);
-                      }
-                      fflush(stdout);
-                      break;
+                        args.reset_conn = 1;
+                        printf("Streaming does not provide an accurate\n");
+                        printf("measurement of the latency since small\n");
+                        printf("messages may get bundled together.\n\n");
+                        if( args.bidir == 1 ) {
+                            printf("You can't use -s and -2 together\n");
+                            exit(0);
+                        }
+                        fflush(stdout);
+                        break;
 
-            case 'l': start = atoi(optarg);
-                      if (start < 1)
-                      {
-                        fprintf(stderr,"Need a starting value >= 1\n");
-                        exit(0);
-                      }
-                      break;
+            case 'l':   start = atoi(optarg);
+                        if (start < 1) {
+                            fprintf(stderr,"Need a starting value >= 1\n");
+                            exit(0);
+                        }
+                        break;
 
-            case 'u': end = atoi(optarg);
-                      break;
+            case 'u':   end = atoi(optarg);
+                        break;
 
 #if defined(TCP) && ! defined(INFINIBAND) && !defined(OPENIB)
-            case 'b': /* -b # resets the buffer size, -b 0 keeps system defs */
-                      args.prot.sndbufsz = args.prot.rcvbufsz = atoi(optarg);
-                      break;
+            case 'b':   /* -b # resets the buffer size, -b 0 keeps system defs */
+                        args.prot.sndbufsz = args.prot.rcvbufsz = atoi(optarg);
+                        break;
 #endif
 
-            case '2': args.bidir = 1;    /* Both procs are transmitters */
-                         /* end will be maxed at sndbufsz+rcvbufsz */
-                      printf("Passing data in both directions simultaneously.\n");
-                      printf("Output is for the combined bandwidth.\n");
+            case '2':   args.bidir = 1;    /* Both procs are transmitters */
+                        /* end will be maxed at sndbufsz+rcvbufsz */
+                        printf("Passing data in both directions simultaneously.\n");
+                        printf("Output is for the combined bandwidth.\n");
 #if defined(TCP) && ! defined(INFINIBAND) && !defined(OPENIB)
-                      printf("The socket buffer size limits the maximum test size.\n\n");
+                        printf("The socket buffer size limits the maximum test size.\n\n");
 #endif
-                      if( streamopt ) {
-                        printf("You can't use -s and -2 together\n");
-                        exit(0);
-                      }
-                      break;
+                        if( streamopt ) {
+                            printf("You can't use -s and -2 together\n");
+                            exit(0);
+                        }
+                        break;
 
-            case 'h': args.tr = 1;       /* -h implies transmit node */
-                      args.rcv = 0;
-                      args.host = (char *)malloc(strlen(optarg)+1);
-                      strcpy(args.host, optarg);
-                      break;
+            case 'h':   args.tr = 1;       /* -h implies transmit node */
+                        args.rcv = 0;
+                        args.host = (char *)malloc(strlen(optarg)+1);
+                        strcpy(args.host, optarg);
+                        break;
 
 #ifdef DISK
-            case 'd': args.tr = 1;      /* -d to specify input/output file */
-                      args.rcv = 0;
-                      args.prot.read = 0;
-                      args.prot.read_type = 'c';
-                      args.prot.dfile_name = (char *)malloc(strlen(optarg)+1);
-                      strcpy(args.prot.dfile_name, optarg);
-                      break;
+            case 'd':   args.tr = 1;      /* -d to specify input/output file */
+                        args.rcv = 0;
+                        args.prot.read = 0;
+                        args.prot.read_type = 'c';
+                        args.prot.dfile_name = (char *)malloc(strlen(optarg)+1);
+                        strcpy(args.prot.dfile_name, optarg);
+                        break;
 
-            case 'D': if( optarg[0] == 'r' )
-                         args.prot.read = 1;
-                      else
-                         args.prot.read = 0;
-                      args.prot.read_type = optarg[1];
-                      break;
+            case 'D':   if( optarg[0] == 'r' )
+                            args.prot.read = 1;
+                        else
+                            args.prot.read = 0;
+                        args.prot.read_type = optarg[1];
+                        break;
 #endif
 
-            case 'i': if(args.preburst == 1) {
-                        fprintf(stderr, "Integrity check not supported with prepost burst\n");
-                        exit(-1);
-                      }
-                      integCheck = 1;
-                      perturbation = 0;
-                      start = sizeof(int)+1; /* Start with integer size */
-                      printf("Doing an integrity check instead of measuring performance\n"); fflush(stdout);
-                      break;
+            case 'i':   if(args.preburst == 1) {
+                            fprintf(stderr, "Integrity check not supported with prepost burst\n");
+                            exit(-1);
+                        }
+                        integCheck = 1;
+                        perturbation = 0;
+                        start = sizeof(int)+1; /* Start with integer size */
+                        printf("Doing an integrity check instead of measuring performance\n"); fflush(stdout);
+                        break;
 
 #if defined(MPI)
-            case 'z': args.source_node = -1;
-                      printf("Receive using the ANY_SOURCE flag\n"); fflush(stdout);
-                      break;
+            case 'z':   args.source_node = -1;
+                        printf("Receive using the ANY_SOURCE flag\n"); fflush(stdout);
+                        break;
 
-            case 'a': asyncReceive = 1;
-                      printf("Preposting asynchronous receives\n"); fflush(stdout);
-                      break;
+            case 'a':   asyncReceive = 1;
+                        printf("Preposting asynchronous receives\n"); fflush(stdout);
+                        break;
 
-            case 'S': args.syncflag=1;
-                      fprintf(stderr,"Using synchronous sends\n");
-                      break;
+            case 'S':   args.syncflag=1;
+                        fprintf(stderr,"Using synchronous sends\n");
+                        break;
 #endif
 #if defined(MPI2)
-            case 'g': if(args.prot.no_fence == 1) {
-                        fprintf(stderr, "-f cannot be used with -g\n");
-                        exit(-1);
-                      } 
-                      args.prot.use_get = 1;
-                      printf("Using MPI-2 Get instead of Put\n");
-                      break;
+            case 'g':   if(args.prot.no_fence == 1) {
+                            fprintf(stderr, "-f cannot be used with -g\n");
+                            exit(-1);
+                        } 
+                        args.prot.use_get = 1;
+                        printf("Using MPI-2 Get instead of Put\n");
+                        break;
 
-            case 'f': if(args.prot.use_get == 1) {
-                         fprintf(stderr, "-f cannot be used with -g\n");
-                         exit(-1);
-                      }
-                      args.prot.no_fence = 1;
-                      bufalign = 0;
-                      printf("Buffer alignment off (Required for no fence)\n");
-                      break;
+            case 'f':   if(args.prot.use_get == 1) {
+                            fprintf(stderr, "-f cannot be used with -g\n");
+                            exit(-1);
+                        }
+                        args.prot.no_fence = 1;
+                        bufalign = 0;
+                        printf("Buffer alignment off (Required for no fence)\n");
+                        break;
 #endif /* MPI2 */
 
 #if defined(INFINIBAND)
-            case 'm': switch(atoi(optarg)) {
-                        case 256: args.prot.ib_mtu = MTU256;
-                          break;
-                        case 512: args.prot.ib_mtu = MTU512;
-                          break;
-                        case 1024: args.prot.ib_mtu = MTU1024;
-                          break;
-                        case 2048: args.prot.ib_mtu = MTU2048;
-                          break;
-                        case 4096: args.prot.ib_mtu = MTU4096;
-                          break;
-                        default: 
-                          fprintf(stderr, "Invalid MTU size, must be one of "
-                                          "256, 512, 1024, 2048, 4096\n");
-                          exit(-1);
-                      }
-                      break;
+            case 'm':   switch(atoi(optarg)) {
+                            case 256: args.prot.ib_mtu = MTU256;
+                            break;
+                            case 512: args.prot.ib_mtu = MTU512;
+                            break;
+                            case 1024: args.prot.ib_mtu = MTU1024;
+                            break;
+                            case 2048: args.prot.ib_mtu = MTU2048;
+                            break;
+                            case 4096: args.prot.ib_mtu = MTU4096;
+                            break;
+                            default: 
+                            fprintf(stderr, "Invalid MTU size, must be one of "
+                                            "256, 512, 1024, 2048, 4096\n");
+                            exit(-1);
+                        }
+                        break;
 #endif
 
 #if defined(OPENIB)
-            case 'm': switch(atoi(optarg)) {
-                        case 256: args.prot.ib_mtu = IBV_MTU_256;
-                          break;
-                        case 512: args.prot.ib_mtu = IBV_MTU_512;
-                          break;
-                        case 1024: args.prot.ib_mtu = IBV_MTU_1024;
-                          break;
-                        case 2048: args.prot.ib_mtu = IBV_MTU_2048;
-                          break;
-                        case 4096: args.prot.ib_mtu = IBV_MTU_4096;
-                          break;
-                        default: 
-                          fprintf(stderr, "Invalid MTU size, must be one of "
-                                          "256, 512, 1024, 2048, 4096\n");
-                          exit(-1);
-                      }
-                      break;
+            case 'm':   switch(atoi(optarg)) {
+                            case 256: args.prot.ib_mtu = IBV_MTU_256;
+                            break;
+                            case 512: args.prot.ib_mtu = IBV_MTU_512;
+                            break;
+                            case 1024: args.prot.ib_mtu = IBV_MTU_1024;
+                            break;
+                            case 2048: args.prot.ib_mtu = IBV_MTU_2048;
+                            break;
+                            case 4096: args.prot.ib_mtu = IBV_MTU_4096;
+                            break;
+                            default: 
+                            fprintf(stderr, "Invalid MTU size, must be one of "
+                                            "256, 512, 1024, 2048, 4096\n");
+                            exit(-1);
+                        }
+                        break;
 #endif
 
 #if defined(OPENIB)
-            case 'D': args.prot.device_and_port = strdup(optarg);
-                      break;
+            case 'D':   args.prot.device_and_port = strdup(optarg);
+                        break;
 #endif
 
 #if defined(OPENIB) || defined(INFINIBAND)
-            case 't': if( !strcmp(optarg, "send_recv") ) {
-                         printf("Using Send/Receive communications\n");
-                         args.prot.commtype = NP_COMM_SENDRECV;
-                      } else if( !strcmp(optarg, "send_recv_with_imm") ) {
-                         printf("Using Send/Receive communications with immediate data\n");
-                         args.prot.commtype = NP_COMM_SENDRECV_WITH_IMM;
-                      } else if( !strcmp(optarg, "rdma_write") ) {
-                         printf("Using RDMA Write communications\n");
-                         args.prot.commtype = NP_COMM_RDMAWRITE;
-                      } else if( !strcmp(optarg, "rdma_write_with_imm") ) {
-                         printf("Using RDMA Write communications with immediate data\n");
-                         args.prot.commtype = NP_COMM_RDMAWRITE_WITH_IMM;
-                      } else {
-                         fprintf(stderr, "Invalid transfer type "
-                                 "specified, please choose one of:\n\n"
-                                 "\tsend_recv\t\tUse Send/Receive communications\t(default)\n"
-                                 "\tsend_recv_with_imm\tSame as above with immediate data\n"
-                                 "\trdma_write\t\tUse RDMA Write communications\n"
-                                 "\trdma_write_with_imm\tSame as above with immediate data\n\n");
-                         exit(-1);
-                      }
-                      break;
+            case 't':   if( !strcmp(optarg, "send_recv") ) {
+                            printf("Using Send/Receive communications\n");
+                            args.prot.commtype = NP_COMM_SENDRECV;
+                        } else if( !strcmp(optarg, "send_recv_with_imm") ) {
+                            printf("Using Send/Receive communications with immediate data\n");
+                            args.prot.commtype = NP_COMM_SENDRECV_WITH_IMM;
+                        } else if( !strcmp(optarg, "rdma_write") ) {
+                            printf("Using RDMA Write communications\n");
+                            args.prot.commtype = NP_COMM_RDMAWRITE;
+                        } else if( !strcmp(optarg, "rdma_write_with_imm") ) {
+                            printf("Using RDMA Write communications with immediate data\n");
+                            args.prot.commtype = NP_COMM_RDMAWRITE_WITH_IMM;
+                        } else {
+                            fprintf(stderr, "Invalid transfer type "
+                                    "specified, please choose one of:\n\n"
+                                    "\tsend_recv\t\tUse Send/Receive communications\t(default)\n"
+                                    "\tsend_recv_with_imm\tSame as above with immediate data\n"
+                                    "\trdma_write\t\tUse RDMA Write communications\n"
+                                    "\trdma_write_with_imm\tSame as above with immediate data\n\n");
+                            exit(-1);
+                        }
+                        break;
 
-            case 'c': if( !strcmp(optarg, "local_poll") ) {
-                         printf("Using local polling completion\n");
-                         args.prot.comptype = NP_COMP_LOCALPOLL;
-                      } else if( !strcmp(optarg, "vapi_poll") ) {
-                         printf("Using VAPI polling completion\n");
-                         args.prot.comptype = NP_COMP_VAPIPOLL;
-                      } else if( !strcmp(optarg, "event") ) {
-                         printf("Using VAPI event completion\n");
-                         args.prot.comptype = NP_COMP_EVENT;
-                      } else {
-                         fprintf(stderr, "Invalid completion type specified, "
-                                 "please choose one of:\n\n"
-                                 "\tlocal_poll\tWait for last byte of data\t(default)\n"
-                                 "\tvapi_poll\tUse VAPI polling function\n"
-                                 "\tevent\t\tUse VAPI event handling function\n\n");
-                         exit(-1);
-                      }
-                      break;
+            case 'c':   if( !strcmp(optarg, "local_poll") ) {
+                            printf("Using local polling completion\n");
+                            args.prot.comptype = NP_COMP_LOCALPOLL;
+                        } else if( !strcmp(optarg, "vapi_poll") ) {
+                            printf("Using VAPI polling completion\n");
+                            args.prot.comptype = NP_COMP_VAPIPOLL;
+                        } else if( !strcmp(optarg, "event") ) {
+                            printf("Using VAPI event completion\n");
+                            args.prot.comptype = NP_COMP_EVENT;
+                        } else {
+                            fprintf(stderr, "Invalid completion type specified, "
+                                    "please choose one of:\n\n"
+                                    "\tlocal_poll\tWait for last byte of data\t(default)\n"
+                                    "\tvapi_poll\tUse VAPI polling function\n"
+                                    "\tevent\t\tUse VAPI event handling function\n\n");
+                            exit(-1);
+                        }
+                        break;
 #endif
-	    case 'P': 
-		      args.port = atoi(optarg);
-		      break;
+	        case 'P':   args.port = atoi(optarg);
+		                break;
 
-            case 'n': nrepeat_const = atoi(optarg);
-                      break;
+            case 'n':   nrepeat_const = atoi(optarg);
+                        break;
 
 #if defined(TCP) && ! defined(INFINIBAND) && !defined(OPENIB)
-            case 'r': args.reset_conn = 1;
-                      printf("Resetting connection after every trial\n");
-                      break;
+            case 'r':   args.reset_conn = 1;
+                        printf("Resetting connection after every trial\n");
+                        break;
 #endif
-	    case 'X': debug_wait = 1;
-		      printf("Enableing debug wait!\n");
-		      printf("Attach to pid %d and set debug_wait to 0 to conttinue\n", getpid());
-		      break;
+	        case 'X':   debug_wait = 1;
+                        printf("Enableing debug wait!\n");
+                        printf("Attach to pid %d and set debug_wait to 0 to conttinue\n", getpid());
+                        break;
 
-            default: 
-                     PrintUsage(); 
-                     exit(-12);
-       }
-   }
+            default:    PrintUsage(); 
+                        exit(-12);
+        }
+    }
 
-   while(debug_wait){
-	   for(i=0;i<10000;i++){};
+    while (debug_wait) {
+	    for(i=0;i<10000;i++){};
    	};
 #endif /* ! defined TCGMSG */
 
