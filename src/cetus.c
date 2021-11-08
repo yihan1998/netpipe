@@ -223,8 +223,6 @@ void SendData(ArgStruct *p) {
     if (bytesWritten == -1) {
         printf("NetPIPE: write: error encountered, errno=%d\n", errno);
         exit(401);
-    } else {
-        printf(" >> send len: %d, %.*s\n", bytesWritten, bytesWritten, q);
     }
 }
 
@@ -246,8 +244,6 @@ void RecvData(ArgStruct *p) {
     } else if (bytesRead == -1) {
         printf("NetPIPE: read: error encountered, errno=%d\n", errno);
         exit(401);
-    } else if (bytesRead > 0) {
-        printf(" >> recv: %d, %.*s\n", bytesRead, bytesRead, q);
     }
     
 }
@@ -1029,9 +1025,11 @@ void * netpipe_main(void * arg) {
                         /* Wait to advance send pointer in case RecvData uses
                          * it (e.g. memcpy module).
                          */
-                        if (!args.cache)
+                        if (!args.cache) {
                             AdvanceSendPtr(&args, len_buf_align);
-
+                        }
+                            
+                        printf(" >> %d/%d\n", j, nrepeat);
                     }
 
                        /* t is the 1-directional trasmission time */
