@@ -223,6 +223,8 @@ void SendData(ArgStruct *p) {
     if (bytesWritten == -1) {
         printf("NetPIPE: write: error encountered, errno=%d\n", errno);
         exit(401);
+    } else {
+        printf(" >> send: %.*s\n", bytesWritten, q);
     }
 }
 
@@ -244,7 +246,10 @@ void RecvData(ArgStruct *p) {
     } else if (bytesRead == -1) {
         printf("NetPIPE: read: error encountered, errno=%d\n", errno);
         exit(401);
+    } else if (bytesRead > 0) {
+        printf(" >> recv: %.*s\n", bytesRead, q);
     }
+    
 }
 
 /* uint32_t is used to insure that the integer size is the same even in tests 
@@ -984,8 +989,9 @@ void * netpipe_main(void * arg) {
 
                         for(j=0; j<nrepeat; j++) {
                             PrepareToReceive(&args);
-                            if(!args.cache)
-                            AdvanceRecvPtr(&args, len_buf_align);
+                            if(!args.cache) {
+                                AdvanceRecvPtr(&args, len_buf_align);
+                            }
                         }
 
                         ResetRecvPtr(&args);
