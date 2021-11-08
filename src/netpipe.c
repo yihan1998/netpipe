@@ -97,7 +97,7 @@ int main(int argc, char **argv)
 #if ! defined(TCGMSG)
 
     /* Parse the arguments. See Usage for description */
-    while ((c = getopt(argc, argv, "AXSO:rIiPszgfaB2h:p:o:l:u:b:m:n:t:c:d:D:P:")) != -1)
+    while ((c = getopt(argc, argv, "AXSO:rIiszgfaB2h:p:o:l:u:b:m:n:t:c:d:D:P:")) != -1)
     {
         switch(c)
         {

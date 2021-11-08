@@ -1028,8 +1028,6 @@ void * netpipe_main(void * arg) {
                         if (!args.cache) {
                             AdvanceSendPtr(&args, len_buf_align);
                         }
-                            
-                        printf(" >> %d/%d\n", j, nrepeat);
                     }
 
                        /* t is the 1-directional trasmission time */
