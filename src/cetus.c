@@ -224,7 +224,7 @@ void SendData(ArgStruct *p) {
         printf("NetPIPE: write: error encountered, errno=%d\n", errno);
         exit(401);
     } else {
-        printf(" >> send: %.*s\n", bytesWritten, q);
+        printf(" >> send len: %d, %.*s\n", bytesWritten, bytesWritten, q);
     }
 }
 
@@ -247,7 +247,7 @@ void RecvData(ArgStruct *p) {
         printf("NetPIPE: read: error encountered, errno=%d\n", errno);
         exit(401);
     } else if (bytesRead > 0) {
-        printf(" >> recv: %.*s\n", bytesRead, q);
+        printf(" >> recv: %d, %.*s\n", bytesRead, bytesRead, q);
     }
     
 }
