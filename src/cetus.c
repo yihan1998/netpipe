@@ -394,7 +394,7 @@ void * netpipe_main(void * arg) {
         printf(" argc[%d]: %s\n", i, argv[i]);
     }
     
-    while ((c = getopt(argc, argv, "AXSO:rIiPszgfaB2h:p:o:l:u:b:m:n:t:c:d:D:P:")) != -1) {
+    while ((c = getopt(argc, argv, "AXSO:rIiszgfaB2h:p:o:l:u:b:m:n:t:c:d:D:P:")) != -1) {
         switch(c) {
 	        case 'A':   args.use_sdp=1;
 		                break;
