@@ -121,6 +121,59 @@ void establish(ArgStruct *p) {
     }
 }
 
+void CleanUp2(ArgStruct *p) {
+    char quit[5];
+    quit[0] = 'Q';
+    quit[1] = 'U';
+    quit[2] = 'I';
+    quit[3] = 'T';
+    quit[4] = '\0';
+
+    if (p->tr) {
+
+        cetus_write(p->commfd, quit, 5);
+        cetus_read(p->commfd, quit, 5);
+        cetus_close(p->commfd);
+
+    } else if( p->rcv ) {
+
+        cetus_read(p->commfd, quit, 5);
+        cetus_write(p->commfd, quit, 5);
+        cetus_close(p->commfd);
+        cetus_close(p->servicefd);
+
+    }
+}
+
+
+void CleanUp(ArgStruct *p) {
+
+}
+
+void Reset(ArgStruct *p) {
+  
+    /* Reset sockets */
+
+    if(p->reset_conn) {
+
+        doing_reset = 1;
+
+        /* Close the sockets */
+
+        CleanUp2(p);
+
+        /* Now open and connect new sockets */
+
+        Setup(p);
+
+    }
+
+}
+
+void AfterAlignmentInit(ArgStruct *p) {
+
+}
+
 static int readFully(int fd, void *obuf, int len) {
     int bytesLeft = len;
     char *buf = (char *) obuf;
