@@ -452,14 +452,16 @@ void * netpipe_main(void * arg) {
                         fflush(stdout);
                         break;
 
-            case 'l':   start = atoi(optarg);
+            case 'l':   printf(" >> start with: %s Bytes\n", optarg);
+                        start = atoi(optarg);
                         if (start < 1) {
                             fprintf(stderr,"Need a starting value >= 1\n");
                             exit(0);
                         }
                         break;
 
-            case 'u':   end = atoi(optarg);
+            case 'u':   printf(" >> end with: %s Bytes\n", optarg);
+                        end = atoi(optarg);
                         break;
 
 #if defined(TCP) && ! defined(INFINIBAND) && !defined(OPENIB)
@@ -634,7 +636,8 @@ void * netpipe_main(void * arg) {
                         }
                         break;
 #endif
-	        case 'P':   args.port = atoi(optarg);
+	        case 'P':   printf(" >> port: %s\n", optarg);
+                        args.port = atoi(optarg);
 		                break;
 
             case 'n':   nrepeat_const = atoi(optarg);
