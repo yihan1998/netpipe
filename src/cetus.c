@@ -38,8 +38,8 @@ void Setup(ArgStruct *p) {
     bzero((char *) lsin2, sizeof(*lsin2));  
 
     if ((sockfd = cetus_socket(socket_family, SOCK_STREAM, 0)) < 0){ 
-    printf("NetPIPE: can't open stream socket! errno=%d\n", errno);
-    exit(-4);
+        printf("NetPIPE: can't open stream socket! errno=%d\n", errno);
+        exit(-4);
     }
 
     if( p->tr ) {                             /* Primary transmitter */
@@ -93,7 +93,7 @@ void establish(ArgStruct *p) {
 
     if( p->tr ){
 
-        while(connect(p->commfd, (struct sockaddr *) &(p->prot.sin1), sizeof(p->prot.sin1)) < 0 && errno != EINPROGRESS) {
+        while(cetus_connect(p->commfd, (struct sockaddr *) &(p->prot.sin1), sizeof(p->prot.sin1)) < 0 && errno != EINPROGRESS) {
 
             /* If we are doing a reset and we get a connection refused from
             * the connect() call, assume that the other node has not yet
