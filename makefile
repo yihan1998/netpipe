@@ -258,3 +258,17 @@ atoll: $(SRC)/atoll.c $(SRC)/netpipe.c $(SRC)/netpipe.h
         $(SRC)/atoll.c -o NPatoll \
         -I$(PALMS_PATH)/include -L$(PALMS_PATH)/lib -latoll
 
+CETUS_DIR = /home/yihan-18/nus-sys/cetus
+CETUS_CFLAGS = -O3 -g -fno-stack-protector -fPIC
+CETUS_INC = -I/usr/include/ -I$(CETUS_DIR)/Cetus/include/ -I$(CETUS_DIR)/mthread/include/
+CETUS_LIB = -L$(CETUS_DIR)/mthread -lmthread -L$(CETUS_DIR)/Cetus -lcetus
+
+# DPDK
+LIBDPDK_CFLAGS := $(shell pkg-config --cflags libdpdk)
+LIBDPDK_LDFLAGS := $(shell pkg-config --libs libdpdk)
+CETUS_CFLAGS += $(LIBDPDK_CFLAGS)
+CETUS_LIB += $(LIBDPDK_LDFLAGS)
+
+cetus: $(SRC)/cetus.c $(SRC)/netpipe.c $(SRC)/netpipe.h 
+	$(CC) $(CETUS_CFLAGS) $(SRC)/cetus.c $(SRC)/netpipe.c -o NPcetus \
+        $(CETUS_INC) $(IBV_LIB)
