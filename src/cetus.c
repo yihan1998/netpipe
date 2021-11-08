@@ -391,7 +391,7 @@ void * netpipe_main(void * arg) {
     /* Parse the arguments. See Usage for description */
     optind = 1;
     for (int i = 0; i < argc; i++) {
-        printf(" argc[%d]: %s\n", argv[i]);
+        printf(" argc[%d]: %s\n", i, argv[i]);
     }
     
     while ((c = getopt(argc, argv, "AXSO:rIiPszgfaB2h:p:o:l:u:b:m:n:t:c:d:D:P:")) != -1) {
