@@ -1484,7 +1484,7 @@ int netpipe_test(void * arg) {
         fprintf(stdout, "mthread_create() error: %d\n", ret);
         exit(1);
     } else {
-        fprintf(stdout, "[%s on core %d] server_thread create done(mid: %lu)", __func__, lcore_id, mid);
+        fprintf(stdout, "[%s on core %d] netpipe_main() create done(mid: %lu)\n", __func__, lcore_id, mid);
     }
 
     /* Test mthread_join */
@@ -1493,7 +1493,7 @@ int netpipe_test(void * arg) {
         exit(1);
     }
 
-    fprintf(stdout, "[%s on core %d] mthread %lu joined!", __func__, lcore_id, mid);
+    fprintf(stdout, "[%s on core %d] mthread %lu joined!\n", __func__, lcore_id, mid);
 
     // sail_exit();
 }
