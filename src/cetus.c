@@ -698,73 +698,74 @@ void * netpipe_main(void * arg) {
    }
 #endif
 
-   if (start > end)
-   {
-       fprintf(stderr, "Start MUST be LESS than end\n");
-       exit(420132);
-   }
-   args.nbuff = TRIALS;
+    if (start > end) {
+        fprintf(stderr, "Start MUST be LESS than end\n");
+        exit(420132);
+    }
+    args.nbuff = TRIALS;
 
-   Setup(&args);
+    Setup(&args);
 
-   if( args.bidir && end > args.upper ) {
-      end = args.upper;
-      if( args.tr ) {
-         printf("The upper limit is being set to %d Bytes\n", end);
+    if( args.bidir && end > args.upper ) {
+        end = args.upper;
+        if( args.tr ) {
+            printf("The upper limit is being set to %d Bytes\n", end);
 #if defined(TCP) && ! defined(INFINIBAND) && !defined(OPENIB)
-         printf("due to socket buffer size limitations\n\n");
+            printf("due to socket buffer size limitations\n\n");
 #endif
-   }  }
+        }  
+    }
 
 #if defined(GM)
 
-   if(streamopt && (!nrepeat_const || nrepeat_const > args.prot.num_stokens)) {
-     printf("\nGM is currently limited by the driver software to %d\n", 
-            args.prot.num_stokens);
-     printf("outstanding sends. The number of repeats will be set\n");
-     printf("to this limit for every trial in streaming mode.  You\n");
-     printf("may use the -n switch to set a smaller number of repeats\n\n");
+    if(streamopt && (!nrepeat_const || nrepeat_const > args.prot.num_stokens)) {
+        printf("\nGM is currently limited by the driver software to %d\n", 
+                args.prot.num_stokens);
+        printf("outstanding sends. The number of repeats will be set\n");
+        printf("to this limit for every trial in streaming mode.  You\n");
+        printf("may use the -n switch to set a smaller number of repeats\n\n");
 
-     nrepeat_const = args.prot.num_stokens;
-   }
+        nrepeat_const = args.prot.num_stokens;
+    }
 
 #endif
 
-   if( args.tr )                     /* Primary transmitter */
-   {
-       if ((out = fopen(s, "w")) == NULL)
-       {
-           fprintf(stderr,"Can't open %s for output\n", s);
-           exit(1);
-       }
-   }
-   else out = stdout;
+    /* Primary transmitter */
+    if( args.tr ) {
+        if ((out = fopen(s, "w")) == NULL) {
+            fprintf(stderr,"Can't open %s for output\n", s);
+            exit(1);
+        }
+    } else {
+        out = stdout;
+    }
 
-      /* Set a starting value for the message size increment. */
+    /* Set a starting value for the message size increment. */
 
-   inc = (start > 1) ? start / 2 : 1;
-   nq = (start > 1) ? 1 : 0;
+    inc = (start > 1) ? start / 2 : 1;
+    nq = (start > 1) ? 1 : 0;
 
-      /* Test the timing to set tlast for the first test */
+    /* Test the timing to set tlast for the first test */
 
-   args.bufflen = start;
-   MyMalloc(&args, args.bufflen, 0, 0);
-   InitBufferData(&args, args.bufflen, 0, 0);
+    args.bufflen = start;
+    MyMalloc(&args, args.bufflen, 0, 0);
+    InitBufferData(&args, args.bufflen, 0, 0);
 
-   if(args.cache) args.s_buff = args.r_buff;
+    if(args.cache) args.s_buff = args.r_buff;
+    
+    args.r_ptr = args.r_buff_orig = args.r_buff;
+    args.s_ptr = args.s_buff_orig = args.s_buff;
+        
+    AfterAlignmentInit(&args);  /* MPI-2 needs this to create a window */
+
+    /* Infiniband requires use of asynchronous communications, so we need
+        * the PrepareToReceive calls below
+        */
+    if( asyncReceive ) {
+        PrepareToReceive(&args);
+    }
    
-   args.r_ptr = args.r_buff_orig = args.r_buff;
-   args.s_ptr = args.s_buff_orig = args.s_buff;
-      
-   AfterAlignmentInit(&args);  /* MPI-2 needs this to create a window */
-
-   /* Infiniband requires use of asynchronous communications, so we need
-    * the PrepareToReceive calls below
-    */
-   if( asyncReceive )
-      PrepareToReceive(&args);
-   
-   Sync(&args);    /* Sync to prevent race condition in armci module */
+    Sync(&args);    /* Sync to prevent race condition in armci module */
 
    /* For simplicity's sake, even if the real test below will be done in
     * bi-directional mode, we still do the ping-pong one-way-at-a-time test
@@ -772,101 +773,100 @@ void * netpipe_main(void * arg) {
     * longer to send data in both directions at once than it does to send data
     * one way at a time, this shouldn't be too far off anyway.
     */
-   t0 = When();
-      for( n=0; n<100; n++) {
-         if( args.tr) {
-            SendData(&args);
-            RecvData(&args);
-            if( asyncReceive && n<99 )
-               PrepareToReceive(&args);
-         } else if( args.rcv) {
-            RecvData(&args);
-            if( asyncReceive && n<99 )
-               PrepareToReceive(&args);
-            SendData(&args);
-         }
-      }
-   tlast = (When() - t0)/200;
+    t0 = When();
+    for( n=0; n<100; n++) {
+        if( args.tr) {
+        SendData(&args);
+        RecvData(&args);
+        if( asyncReceive && n<99 )
+            PrepareToReceive(&args);
+        } else if( args.rcv) {
+        RecvData(&args);
+        if( asyncReceive && n<99 )
+            PrepareToReceive(&args);
+        SendData(&args);
+        }
+    }
+    tlast = (When() - t0)/200;
 
-   /* Sync up and Reset before freeing the buffers */
+    /* Sync up and Reset before freeing the buffers */
+    
+    Sync(&args);  ///////
+
+    Reset(&args);
    
-   Sync(&args);  ///////
+    /* Free the buffers and any other module-specific resources. */
+    if(args.cache)
+        FreeBuff(args.r_buff_orig, NULL);
+    else
+        FreeBuff(args.r_buff_orig, args.s_buff_orig);
 
-   Reset(&args);
-   
-   /* Free the buffers and any other module-specific resources. */
-   if(args.cache)
-      FreeBuff(args.r_buff_orig, NULL);
-   else
-      FreeBuff(args.r_buff_orig, args.s_buff_orig);
+        /* Do setup for no-cache mode, using two distinct buffers. */
 
-      /* Do setup for no-cache mode, using two distinct buffers. */
+    if (!args.cache)
+    {
 
-   if (!args.cache)
-   {
+        /* Allocate dummy pool of memory to flush cache with */
 
-       /* Allocate dummy pool of memory to flush cache with */
+        if ( (memcache = (int *)malloc(MEMSIZE)) == NULL)
+        {
+            perror("malloc");
+            exit(1);
+        }
+        mymemset(memcache, 0, MEMSIZE/sizeof(int)); 
 
-       if ( (memcache = (int *)malloc(MEMSIZE)) == NULL)
-       {
-           perror("malloc");
-           exit(1);
-       }
-       mymemset(memcache, 0, MEMSIZE/sizeof(int)); 
+        /* Allocate large memory pools */
 
-       /* Allocate large memory pools */
+        MyMalloc(&args, MEMSIZE+bufalign, args.soffset, args.roffset); 
 
-       MyMalloc(&args, MEMSIZE+bufalign, args.soffset, args.roffset); 
+        /* Save buffer addresses */
+        
+        args.s_buff_orig = args.s_buff;
+        args.r_buff_orig = args.r_buff;
 
-       /* Save buffer addresses */
+        /* Align buffers */
+
+        args.s_buff = AlignBuffer(args.s_buff, bufalign);
+        args.r_buff = AlignBuffer(args.r_buff, bufalign);
+
+        /* Post alignment initialization */
+
+        AfterAlignmentInit(&args);
+
+        /* Initialize send buffer pointer */
        
-       args.s_buff_orig = args.s_buff;
-       args.r_buff_orig = args.r_buff;
+        /* both soffset and roffset should be zero if we don't have any offset stuff, so this should be fine */
+        args.s_ptr = args.s_buff+args.soffset;
+        args.r_ptr = args.r_buff+args.roffset;
+    }
 
-       /* Align buffers */
-
-       args.s_buff = AlignBuffer(args.s_buff, bufalign);
-       args.r_buff = AlignBuffer(args.r_buff, bufalign);
-
-       /* Post alignment initialization */
-
-       AfterAlignmentInit(&args);
-
-       /* Initialize send buffer pointer */
-       
-/* both soffset and roffset should be zero if we don't have any offset stuff, so this should be fine */
-       args.s_ptr = args.s_buff+args.soffset;
-       args.r_ptr = args.r_buff+args.roffset;
-   }
-
-       /**************************
+        /**************************
         * Main loop of benchmark *
         **************************/
 
-   if( args.tr ) fprintf(stderr,"Now starting the main loop\n");
+    if( args.tr ) fprintf(stderr,"Now starting the main loop\n");
 
-   for ( n = 0, len = start, errFlag = 0; 
-        n < NSAMP - 3 && tlast < STOPTM && len <= end && !errFlag; 
-        len = len + inc, nq++ )
-   {
+    for ( n = 0, len = start, errFlag = 0; 
+            n < NSAMP - 3 && tlast < STOPTM && len <= end && !errFlag; 
+            len = len + inc, nq++ )
+    {
 
-           /* Exponentially increase the block size.  */
+        /* Exponentially increase the block size.  */
 
-       if (nq > 2) inc = ((nq % 2))? inc + inc: inc;
+        if (nq > 2) inc = ((nq % 2))? inc + inc: inc;
        
-          /* This is a perturbation loop to test nearby values */
+        /* This is a perturbation loop to test nearby values */
 
-       for (pert = ((perturbation > 0) && (inc > perturbation+1)) ? -perturbation : 0;
+        for (pert = ((perturbation > 0) && (inc > perturbation+1)) ? -perturbation : 0;
             pert <= perturbation; 
             n++, pert += ((perturbation > 0) && (inc > perturbation+1)) ? perturbation : perturbation+1)
-       {
+        {
 
-           Sync(&args);    /* Sync to prevent race condition in armci module */
+            Sync(&args);    /* Sync to prevent race condition in armci module */
 
-               /* Calculate how many times to repeat the experiment. */
+            /* Calculate how many times to repeat the experiment. */
 
-           if( args.tr )
-           {
+            if( args.tr ) {
                if (nrepeat_const) {
                    nrepeat = nrepeat_const;
 /*               } else if (len == start) {*/
@@ -876,20 +876,19 @@ void * netpipe_main(void * arg) {
                                   (args.bufflen - inc + 1.0) * tlast)),TRIALS);
                }
                SendRepeat(&args, nrepeat);
-           }
-           else if( args.rcv )
-           {
+           } else if( args.rcv ) {
                RecvRepeat(&args, &nrepeat);
            }
 
            args.bufflen = len + pert;
 
-           if( args.tr )
+           if( args.tr ) {
                fprintf(stderr,"%3d: %7d bytes %6d times --> ",
                        n,args.bufflen,nrepeat);
+           }
 
-           if (args.cache) /* Allow cache effects.  We use only one buffer */
-           {
+           if (args.cache) {
+               /* Allow cache effects.  We use only one buffer */
                /* Allocate the buffer with room for alignment*/
 
                MyMalloc(&args, args.bufflen+bufalign, args.soffset, args.roffset); 
@@ -930,9 +929,8 @@ void * netpipe_main(void * arg) {
                args.r_ptr = args.r_buff+args.roffset;
                args.s_ptr = args.r_buff+args.soffset;
 
-           }
-           else /* Eliminate cache effects.  We use two distinct buffers */
-           {
+           } else {
+               /* Eliminate cache effects.  We use two distinct buffers */
 
                /* this isn't truly set up for offsets yet */
                /* Size of an aligned memory block including trailing padding */
@@ -964,50 +962,45 @@ void * netpipe_main(void * arg) {
              * section that are not in the receive section.
              */
 
-            if( args.tr || args.bidir )
-            {
+            if( args.tr || args.bidir ) {
                 /*
                    This is the transmitter: send the block TRIALS times, and
                    if we are not streaming, expect the receiver to return each
                    block.
                 */
 
-                for (i = 0; i < (integCheck ? 1 : TRIALS); i++)
-                {                    
-                    if(args.preburst && asyncReceive && !streamopt)
-                    {
+                for (i = 0; i < (integCheck ? 1 : TRIALS); i++) {                    
+                    if(args.preburst && asyncReceive && !streamopt) {
 
-                      /* We need to save the value of the recv ptr so
-                       * we can reset it after we do the preposts, in case
-                       * the module needs to use the same ptr values again
-                       * so it can wait on the last byte to change to indicate
-                       * the recv is finished.
-                       */
+                        /* We need to save the value of the recv ptr so
+                        * we can reset it after we do the preposts, in case
+                        * the module needs to use the same ptr values again
+                        * so it can wait on the last byte to change to indicate
+                        * the recv is finished.
+                        */
 
-                      SaveRecvPtr(&args);
+                        SaveRecvPtr(&args);
 
-                      for(j=0; j<nrepeat; j++)
-                      {
-                        PrepareToReceive(&args);
-                        if(!args.cache)
-                          AdvanceRecvPtr(&args, len_buf_align);
-                      }
+                        for(j=0; j<nrepeat; j++) {
+                            PrepareToReceive(&args);
+                            if(!args.cache)
+                            AdvanceRecvPtr(&args, len_buf_align);
+                        }
 
-                      ResetRecvPtr(&args);
+                        ResetRecvPtr(&args);
                     }
 
                     /* Flush the cache using the dummy buffer */
-                    if (!args.cache)
-                      flushcache(memcache, MEMSIZE/sizeof(int));
+                    if (!args.cache) {
+                        flushcache(memcache, MEMSIZE/sizeof(int));
+                    }
 
                     Sync(&args);
 
                     t0 = When();
 
-                    for (j = 0; j < nrepeat; j++)
-                    {
-                        if (!args.preburst && asyncReceive && !streamopt)
-                        {
+                    for (j = 0; j < nrepeat; j++) {
+                        if (!args.preburst && asyncReceive && !streamopt) {
                             PrepareToReceive(&args);
                         }
 
@@ -1015,14 +1008,14 @@ void * netpipe_main(void * arg) {
 
                         SendData(&args);
 
-                        if (!streamopt)
-                        {
+                        if (!streamopt) {
                             RecvData(&args);
 
                             if (integCheck) VerifyIntegrity(&args);
 
-                            if(!args.cache)
-                              AdvanceRecvPtr(&args, len_buf_align);
+                            if(!args.cache) {
+                                AdvanceRecvPtr(&args, len_buf_align);
+                            }
 
                         }
                         
@@ -1030,7 +1023,7 @@ void * netpipe_main(void * arg) {
                          * it (e.g. memcpy module).
                          */
                         if (!args.cache)
-                          AdvanceSendPtr(&args, len_buf_align);
+                            AdvanceSendPtr(&args, len_buf_align);
 
                     }
 
@@ -1051,7 +1044,7 @@ void * netpipe_main(void * arg) {
 /*                    t2 += t*t;*/
                 }
 
-                if (streamopt){  /* Get time info from Recv node */
+                if (streamopt) {  /* Get time info from Recv node */
                     RecvTime(&args, &bwdata[n].t);
 /*                    RecvTime(&args, &t1);*/
 /*                    RecvTime(&args, &t2);*/
@@ -1061,78 +1054,69 @@ void * netpipe_main(void * arg) {
 
 /*                bwdata[n].variance = t2/TRIALS - t1/TRIALS * t1/TRIALS;*/
 
-            }
-            else if( args.rcv )
-            {
+            } else if( args.rcv ) {
                 /*
                    This is the receiver: receive the block TRIALS times, and
                    if we are not streaming, send the block back to the
                    sender.
                 */
-                for (i = 0; i < (integCheck ? 1 : TRIALS); i++)
-                {
-                    if (asyncReceive)
-                    {
-                       if (args.preburst)
-                       {
+                for (i = 0; i < (integCheck ? 1 : TRIALS); i++) {
+                    if (asyncReceive) {
+                       if (args.preburst) {
 
-                         /* We need to save the value of the recv ptr so
-                          * we can reset it after we do the preposts, in case
-                          * the module needs to use the same ptr values again
-                          * so it can wait on the last byte to change to 
-                          * indicate the recv is finished.
-                          */
+                            /* We need to save the value of the recv ptr so
+                            * we can reset it after we do the preposts, in case
+                            * the module needs to use the same ptr values again
+                            * so it can wait on the last byte to change to 
+                            * indicate the recv is finished.
+                            */
 
-                         SaveRecvPtr(&args);
+                            SaveRecvPtr(&args);
 
-                         for (j=0; j < nrepeat; j++)
-                         {
-                              PrepareToReceive(&args);
-                              if (!args.cache)
-                                 AdvanceRecvPtr(&args, len_buf_align);
+                            for (j=0; j < nrepeat; j++) {
+                                PrepareToReceive(&args);
+                                if (!args.cache) {
+                                    AdvanceRecvPtr(&args, len_buf_align);
+                                }
                          }
                          
                          ResetRecvPtr(&args);
                          
-                       }
-                       else
-                       {
+                       } else {
                            PrepareToReceive(&args);
                        }
                       
                     }
                     
                     /* Flush the cache using the dummy buffer */
-                    if (!args.cache)
-                      flushcache(memcache, MEMSIZE/sizeof(int));
+                    if (!args.cache) {
+                        flushcache(memcache, MEMSIZE/sizeof(int));
+                    }
 
                     Sync(&args);
 
                     t0 = When();
-                    for (j = 0; j < nrepeat; j++)
-                    {
+                    for (j = 0; j < nrepeat; j++) {
                         RecvData(&args);
 
                         if (integCheck) VerifyIntegrity(&args);
 
-                        if (!args.cache)
-                        { 
+                        if (!args.cache) { 
                             AdvanceRecvPtr(&args, len_buf_align);
                         }
                         
-                        if (!args.preburst && asyncReceive && (j < nrepeat-1))
-                        {
+                        if (!args.preburst && asyncReceive && (j < nrepeat-1)) {
                             PrepareToReceive(&args);
                         }
 
-                        if (!streamopt)
-                        {
+                        if (!streamopt) {
                             if (integCheck) SetIntegrityData(&args);
                             
                             SendData(&args);
 
-                            if(!args.cache) 
-                              AdvanceSendPtr(&args, len_buf_align);
+                            if(!args.cache) {
+                                AdvanceSendPtr(&args, len_buf_align);
+                            }
                         }
 
                     }
@@ -1146,16 +1130,16 @@ void * netpipe_main(void * arg) {
 /*                    t1 += t;*/
 /*                    t2 += t*t;*/
                 }
-                if (streamopt){  /* Recv proc calcs time and sends to Trans */
+
+                if (streamopt) {  
+                    /* Recv proc calcs time and sends to Trans */
                     SendTime(&args, &bwdata[n].t);
 /*                    SendTime(&args, &t1);*/
 /*                    SendTime(&args, &t2);*/
                 }
-            }
-            else  /* Just going along for the ride */
-            {
-                for (i = 0; i < (integCheck ? 1 : TRIALS); i++)
-                {
+            } else {
+                /* Just going along for the ride */
+                for (i = 0; i < (integCheck ? 1 : TRIALS); i++) {
                     Sync(&args);
                 }
             }
@@ -1166,7 +1150,7 @@ void * netpipe_main(void * arg) {
              * this.
              */
             if(bwdata[n].t == 0.0) {
-              bwdata[n].t = 0.000001;
+                bwdata[n].t = 0.000001;
             }
             
             tlast = bwdata[n].t;
@@ -1174,8 +1158,7 @@ void * netpipe_main(void * arg) {
             bwdata[n].bps = bwdata[n].bits / (bwdata[n].t * 1024 * 1024);
             bwdata[n].repeat = nrepeat;
             
-            if (args.tr)
-            {
+            if (args.tr) {
                 if(integCheck) {
                   fprintf(out,"%8d %d", bwdata[n].bits / 8, nrepeat);
 
@@ -1195,13 +1178,13 @@ void * netpipe_main(void * arg) {
                 FreeBuff(args.r_buff_orig, NULL);
             
             if ( args.tr ) {
-               if(integCheck) {
-                 fprintf(stderr, " Integrity check passed\n");
+                if(integCheck) {
+                    fprintf(stderr, " Integrity check passed\n");
 
-               } else {
-                 fprintf(stderr," %8.2lf Mbps in %10.2lf usec\n", 
-                         bwdata[n].bps, tlast*1.0e6);
-               }
+                } else {
+                    fprintf(stderr," %8.2lf Mbps in %10.2lf usec\n", 
+                            bwdata[n].bps, tlast*1.0e6);
+                }
             }
 
 
