@@ -110,8 +110,8 @@ void establish(ArgStruct *p) {
     } else if( p->rcv ) {
 
         /* SERVER */
-        listen(p->servicefd, 5);
-        p->commfd = accept(p->servicefd, (struct sockaddr *) &(p->prot.sin2), &clen);
+        cetus_listen(p->servicefd, 5);
+        p->commfd = cetus_accept(p->servicefd, (struct sockaddr *) &(p->prot.sin2), &clen);
 
         if(p->commfd < 0){
             printf("Server: Accept Failed! errno=%d\n",errno);
