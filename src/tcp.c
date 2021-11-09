@@ -170,7 +170,6 @@ void Sync(ArgStruct *p)
         perror("NetPIPE: error writing or reading synchronization string");
         exit(3);
       }
-    fprintf(stderr, "Synchronization string send: %s, recv: %s\n", s, response);
     if (strncmp(s, response, strlen(s)))
       {
         fprintf(stderr, "NetPIPE: Synchronization string incorrect! |%s|\n", response);
