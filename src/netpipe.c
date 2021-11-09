@@ -569,7 +569,6 @@ int main(int argc, char **argv)
             n++, pert += ((perturbation > 0) && (inc > perturbation+1)) ? perturbation : perturbation+1)
        {
 
-           fprintf(stderr, "%3d: Synchronizing with %d Bytes test...\n", n, len);
            Sync(&args);    /* Sync to prevent race condition in armci module */
 
                /* Calculate how many times to repeat the experiment. */
