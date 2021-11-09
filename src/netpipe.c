@@ -472,7 +472,8 @@ int main(int argc, char **argv)
    if( asyncReceive )
       PrepareToReceive(&args);
    
-   Sync(&args);    /* Sync to prevent race condition in armci module */
+    fprintf(stderr, "%3d: Synchronizing before test begin...\n", n);
+    Sync(&args);    /* Sync to prevent race condition in armci module */
 
    /* For simplicity's sake, even if the real test below will be done in
     * bi-directional mode, we still do the ping-pong one-way-at-a-time test
@@ -498,6 +499,7 @@ int main(int argc, char **argv)
 
    /* Sync up and Reset before freeing the buffers */
    
+    fprintf(stderr, "%3d: Synchronizing before test begin (again)...\n", n);
    Sync(&args);  ///////
 
    Reset(&args);
@@ -569,7 +571,7 @@ int main(int argc, char **argv)
             n++, pert += ((perturbation > 0) && (inc > perturbation+1)) ? perturbation : perturbation+1)
        {
 
-           fprintf(stderr, "%3d: Synchronizing...\n", n);
+           fprintf(stderr, "%3d: Synchronizing with %d Bytes test...\n", n, len);
            Sync(&args);    /* Sync to prevent race condition in armci module */
 
                /* Calculate how many times to repeat the experiment. */
