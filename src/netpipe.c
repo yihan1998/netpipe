@@ -483,6 +483,7 @@ int main(int argc, char **argv)
     */
    t0 = When();
       for( n=0; n<100; n++) {
+        fprintf(stderr, " >> round: %3d\n", n);
          if( args.tr) {
             SendData(&args);
             RecvData(&args);
