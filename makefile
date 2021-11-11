@@ -91,7 +91,7 @@ MTCP_DPDK	= 1
 MTCP_FLD    = $(MTCP_DIR)/mtcp
 MTCP_INC    = -I${MTCP_FLD}/include -I${MTCP_FLD}/src/include
 MTCP_LIB    = -L${MTCP_FLD}/lib
-MTCP_TARGET = ${MTCP_LIB}/libmtcp.a
+MTCP_TARGET = ${MTCP_FLD}/lib/libmtcp.a
 
 UTIL_FLD 	= $(MTCP_DIR)/util
 UTIL_INC 	= -I${UTIL_FLD}/include
