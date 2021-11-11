@@ -135,7 +135,7 @@ void Init(ArgStruct *p, int* pargc, char*** pargv)
    p->rcv = 1;
    struct mtcp_conf mcfg;
    mtcp_getconf(&mcfg);
-   mcfg.num_cores = num_cores;
+   mcfg.num_cores = 1;
    mtcp_setconf(&mcfg);
    mtcp_init("NPmtcp.conf");
 }
