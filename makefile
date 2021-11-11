@@ -86,14 +86,19 @@ tcp: $(SRC)/tcp.c $(SRC)/netpipe.c $(SRC)/netpipe.h
 
 MTCP_DIR = /home/yihan-18/mtcp
 
-MTCP_INC    = -I${MTCP_DIR}/include -I${MTCP_DIR}/src/include
-MTCP_LIB    = -L${MTCP_DIR}/lib
+MTCP_FLD    = $(MTCP_DIR)/mtcp
+MTCP_INC    = -I${MTCP_FLD}/include -I${MTCP_FLD}/src/include
+MTCP_LIB    = -L${MTCP_FLD}/lib
 MTCP_TARGET = ${MTCP_LIB}/libmtcp.a
+
+UTIL_FLD 	= $(MTCP_DIR)/util
+UTIL_INC 	= -I${UTIL_FLD}/include
+UTIL_OBJ 	= ${UTIL_FLD}/http_parsing.o ${UTIL_FLD}/tdate_parse.o ${UTIL_FLD}/netlib.o
 
 LIBS = ${MTCP_LIB} -lpthread 
 
 mtcp: $(SRC)/mtcp.c $(SRC)/netpipe.c $(SRC)/netpipe.h 
-	$(CC) $(CFLAGS) $(MTCP_TARGET) $(SRC)/netpipe.c $(SRC)/mtcp.c -DTCP -o NPmtcp -I$(SRC) $(MTCP_INC) -lmtcp -lnuma -pthread -lps -lrt $(MTCP_LIB)
+	$(CC) $(CFLAGS) $(MTCP_TARGET) $(SRC)/netpipe.c $(SRC)/mtcp.c -DTCP -o NPmtcp -I$(SRC) $(MTCP_INC) $(UTIL_OBJ) -lmtcp -lnuma -pthread -lps -lrt $(MTCP_LIB)
 
 tcp6: $(SRC)/tcp.c $(SRC)/netpipe.c $(SRC)/netpipe.h 
 	$(CC) $(CFLAGS) $(SRC)/netpipe.c $(SRC)/tcp6.c -DTCP6 \
