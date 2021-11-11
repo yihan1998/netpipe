@@ -133,6 +133,10 @@ void Init(ArgStruct *p, int* pargc, char*** pargv)
    p->prot.sndbufsz = p->prot.rcvbufsz = 0;
    p->tr = 0;     /* The transmitter will be set using the -h host flag. */
    p->rcv = 1;
+   struct mtcp_conf mcfg;
+   mtcp_getconf(&mcfg);
+   mcfg.num_cores = num_cores;
+   mtcp_setconf(&mcfg);
    mtcp_init("NPmtcp.conf");
 }
 
