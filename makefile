@@ -98,6 +98,8 @@ UTIL_INC 	= -I${UTIL_FLD}/include
 UTIL_OBJ 	= ${UTIL_FLD}/http_parsing.o ${UTIL_FLD}/tdate_parse.o ${UTIL_FLD}/netlib.o
 
 # dpdk-specific variables
+RTE_SDK=/home/yihan-18/nus-sys/cetus/dpdk
+RTE_TARGET=x86_64-native-linuxapp-gcc
 ifeq ($(MTCP_DPDK),1)
 DPDK_MACHINE_LINKER_FLAGS=${RTE_SDK}/${RTE_TARGET}/lib/ldflags.txt
 DPDK_MACHINE_LDFLAGS=$(shell cat ${DPDK_MACHINE_LINKER_FLAGS})
