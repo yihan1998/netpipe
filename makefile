@@ -84,7 +84,9 @@ clean:
 tcp: $(SRC)/tcp.c $(SRC)/netpipe.c $(SRC)/netpipe.h 
 	$(CC) $(CFLAGS) $(SRC)/netpipe.c $(SRC)/tcp.c -DTCP -o NPtcp -I$(SRC)
 
-MTCP_DIR = /home/yihan-18/mtcp
+MTCP_DIR 	= /home/yihan-18/mtcp
+
+MTCP_DPDK	= 1
 
 MTCP_FLD    = $(MTCP_DIR)/mtcp
 MTCP_INC    = -I${MTCP_FLD}/include -I${MTCP_FLD}/src/include
@@ -95,10 +97,17 @@ UTIL_FLD 	= $(MTCP_DIR)/util
 UTIL_INC 	= -I${UTIL_FLD}/include
 UTIL_OBJ 	= ${UTIL_FLD}/http_parsing.o ${UTIL_FLD}/tdate_parse.o ${UTIL_FLD}/netlib.o
 
-LIBS = ${MTCP_LIB} -lpthread 
+# dpdk-specific variables
+ifeq ($(MTCP_DPDK),1)
+DPDK_MACHINE_LINKER_FLAGS=${RTE_SDK}/${RTE_TARGET}/lib/ldflags.txt
+DPDK_MACHINE_LDFLAGS=$(shell cat ${DPDK_MACHINE_LINKER_FLAGS})
+DPDK_INC = ${RTE_SDK}/${RTE_TARGET}/include
+MTCP_INC += -I$(MTCP_DIR)/io_engine/include -I${DPDK_INC} 
+MTCP_LIB += -g -O3 -pthread -lrt -march=native ${MTCP_FLD}/lib/libmtcp.a -lnuma -lmtcp -lpthread -lrt -ldl -lgmp -L${RTE_SDK}/${RTE_TARGET}/lib ${DPDK_MACHINE_LDFLAGS}
+endif
 
 mtcp: $(SRC)/mtcp.c $(SRC)/netpipe.c $(SRC)/netpipe.h 
-	$(CC) $(CFLAGS) $(MTCP_TARGET) $(SRC)/netpipe.c $(SRC)/mtcp.c -DTCP -o NPmtcp -I$(SRC) $(MTCP_INC) $(UTIL_OBJ) -lmtcp -lnuma -pthread -lps -lrt $(MTCP_LIB)
+	$(CC) $(CFLAGS) $(MTCP_TARGET) $(SRC)/netpipe.c $(SRC)/mtcp.c -DTCP -o NPmtcp -I$(SRC) $(MTCP_INC) $(UTIL_OBJ) $(MTCP_LIB)
 
 tcp6: $(SRC)/tcp.c $(SRC)/netpipe.c $(SRC)/netpipe.h 
 	$(CC) $(CFLAGS) $(SRC)/netpipe.c $(SRC)/tcp6.c -DTCP6 \
