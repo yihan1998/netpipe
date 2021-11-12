@@ -645,7 +645,8 @@ void * netpipe_main(void * arg) {
                         args.port = atoi(optarg);
 		                break;
 
-            case 'n':   nrepeat_const = atoi(optarg);
+            case 'n':   printf(" >> repeat for %s\n", optarg);
+                        nrepeat_const = atoi(optarg);
                         break;
 
 #if defined(TCP) && ! defined(INFINIBAND) && !defined(OPENIB)
