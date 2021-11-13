@@ -178,7 +178,7 @@ void Init(ArgStruct *p, int* pargc, char*** pargv) {
     cpu_set_t cpu_set;
     CPU_ZERO(&cpu_set);
     CPU_SET(0, &cpu_set);
-    sched_setaffinity(0, sizeof(cpu_set_t), &my_set);
+    sched_setaffinity(0, sizeof(cpu_set_t), &cpu_set);
 
     /**
      * Configure parameters for EAL
