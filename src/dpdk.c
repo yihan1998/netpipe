@@ -501,7 +501,7 @@ void SendData(ArgStruct *p)
         memcpy(packet, q, bytesLeft);
         int send_cnt = dpdk_send_pkts(iface.port_id);
         fprintf(stdout, " >> send %d packet\n", send_cnt);
-        fllush(stdout);
+        fflush(stdout);
 
         bytesWritten = bytesLeft;
         bytesLeft -= bytesWritten;
@@ -529,7 +529,7 @@ void RecvData(ArgStruct *p)
         int recv_cnt = dpdk_recv_pkts(iface.port_id);
         if (recv_cnt > 0) {
             fprintf(stdout, " >> send %d packet\n", recv_cnt);
-            fllush(stdout);
+            fflush(stdout);
             /* Receive packets */
             uint8_t * pkt;
 
