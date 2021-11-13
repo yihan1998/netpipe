@@ -13,6 +13,9 @@
 /*****************************************************************************/
 #include    "netpipe.h"
 
+#define _GNU_SOURCE
+#include <sched.h>
+
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
@@ -172,7 +175,10 @@ void Init(ArgStruct *p, int* pargc, char*** pargv) {
     p->tr = 0;     /* The transmitter will be set using the -h host flag. */
     p->rcv = 1;
 
-    lthread_set_affinity(0);
+    cpu_set_t cpu_set;
+    CPU_ZERO(&cpu_set);
+    CPU_SET(0, &cpu_set);
+    sched_setaffinity(0, sizeof(cpu_set_t), &my_set);
 
     /**
      * Configure parameters for EAL
