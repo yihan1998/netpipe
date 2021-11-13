@@ -18,6 +18,8 @@
 #include <sys/types.h>
 #include <ifaddrs.h>
 
+#include <assert.h>
+
 #include <net/if.h>
 
 #include <rte_common.h>
