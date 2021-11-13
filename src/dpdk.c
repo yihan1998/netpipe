@@ -177,11 +177,6 @@ void Init(ArgStruct *p, int* pargc, char*** pargv) {
     p->tr = 0;     /* The transmitter will be set using the -h host flag. */
     p->rcv = 1;
 
-    cpu_set_t cpu_set;
-    CPU_ZERO(&cpu_set);
-    CPU_SET(0, &cpu_set);
-    sched_setaffinity(0, sizeof(cpu_set_t), &cpu_set);
-
     /**
      * Configure parameters for EAL
      *  -l <core_list> : (start core, end core]
@@ -191,7 +186,7 @@ void Init(ArgStruct *p, int* pargc, char*** pargv) {
      */
     int eal_argc = 6;
     char * eal_argv[16] =   {"",
-                             "-l", "0",
+                             "-l", "0-0",
                              "-n", "4",
                              "--proc-type=auto",
                             };
@@ -211,6 +206,7 @@ void Init(ArgStruct *p, int* pargc, char*** pargv) {
     avail_ethdev = rte_eth_dev_count_avail();
     total_ethdev = rte_eth_dev_count_total();
     fprintf(stdout, " finding available devices(avail : %d / total : %d)\n", avail_ethdev, total_ethdev);
+    fflush(stdout);
     
     if (!avail_ethdev) {
         /* We didn't find any available device! */
@@ -253,6 +249,7 @@ void Setup(ArgStruct *p)
         rte_exit(EXIT_FAILURE, " cannot allocate mempool for core %d! err: %s\n", rte_lcore_id(), rte_lcore_id(), rte_strerror(rte_errno));
     } else {
         fprintf(stdout, " mempool for core %d: %p", __func__, rte_lcore_id(), core_mempool);
+        fflush(stdout);
     }
 
     struct rte_eth_conf port_conf = {
@@ -340,7 +337,8 @@ void Setup(ArgStruct *p)
         }
     }
 
-    fprintf(stdout, " done RX/TX queue allocation", rte_lcore_id());
+    fprintf(stdout, " done RX/TX queue allocation on core %d", rte_lcore_id());
+    fflush(stdout);
     
     ret = rte_eth_promiscuous_enable(port_id);
     if (ret != 0) {
@@ -501,7 +499,9 @@ void SendData(ArgStruct *p)
     while (bytesLeft > 0) {
         char * packet = (char *)dpdk_get_txpkt(iface.port_id, bytesLeft);
         memcpy(packet, q, bytesLeft);
-        dpdk_send_pkts(iface.port_id);
+        int send_cnt = dpdk_send_pkts(iface.port_id);
+        fprintf(stdout, " >> send %d packet\n", send_cnt);
+        fllush(stdout);
 
         bytesWritten = bytesLeft;
         bytesLeft -= bytesWritten;
@@ -528,6 +528,8 @@ void RecvData(ArgStruct *p)
     while (bytesLeft > 0) {
         int recv_cnt = dpdk_recv_pkts(iface.port_id);
         if (recv_cnt > 0) {
+            fprintf(stdout, " >> send %d packet\n", recv_cnt);
+            fllush(stdout);
             /* Receive packets */
             uint8_t * pkt;
 
