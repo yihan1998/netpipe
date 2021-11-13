@@ -347,6 +347,15 @@ void Setup(ArgStruct *p)
 }   
 
 /*----------------------------------------------------------------------------*/
+static void free_pkts(struct rte_mbuf ** pkts, int pkt_cnt) {
+    for (int i = 0; i < pkt_cnt; i++) {
+        /* Free packet pointer in packet memory buffer(pkts[i]) */
+        rte_pktmbuf_free(pkts[i]);
+        RTE_MBUF_PREFETCH_TO_FREE(pkts[i+1]);
+    }
+}
+
+/*----------------------------------------------------------------------------*/
 uint8_t * dpdk_get_rxpkt(int port_id, int index, uint16_t * pkt_size) {
     struct rte_mbuf * rx_pkt = dpdk_context.rx_mbufs[port_id].m_table[index];
     *pkt_size = rx_pkt->pkt_len;
