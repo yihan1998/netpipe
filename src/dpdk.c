@@ -316,7 +316,7 @@ void Setup(ArgStruct *p)
         ret = rte_eth_rx_queue_setup(port_id, i, RTE_TEST_RX_DESC_DEFAULT,
                         rte_eth_dev_socket_id(port_id),
                         &rx_conf,
-                        core_mempool[rte_lcore_id()]);
+                        core_mempool);
         if (ret < 0) {
             rte_exit(EXIT_FAILURE, ":: Rx queue setup failed: err=%d, port=%u\n", ret, port_id);
         }
