@@ -198,11 +198,11 @@ void Init(ArgStruct *p, int* pargc, char*** pargv) {
 
     avail_ethdev = rte_eth_dev_count_avail();
     total_ethdev = rte_eth_dev_count_total();
-    fprintf(stdout, " finding available devices(avail : %d / total : %d)", avail_ethdev, total_ethdev);
+    fprintf(stdout, " finding available devices(avail : %d / total : %d)\n", avail_ethdev, total_ethdev);
     
     if (!avail_ethdev) {
         /* We didn't find any available device! */
-        fprintf(stderr, " No available ethernet device detected!");
+        fprintf(stderr, " No available ethernet device detected!\n");
         exit(1);
     }
     
@@ -342,6 +342,22 @@ void Setup(ArgStruct *p)
     if (ret < 0) {
         rte_exit(EXIT_FAILURE, " rte_eth_dev_start:err = %d, port = %u", ret, (unsigned) port_id);
     }
+
+    for (int i = 0; i < MAX_PKT_BURST; i++) {
+        /* Allocate RX packet buffer in DPDK context memory pool */
+        dpdk_context.rx_mbufs[iface.port_id].m_table[i] = rte_pktmbuf_alloc(dpdk_context.mempool);
+        assert(dpdk_context.rx_mbufs[iface.port_id].m_table[i] != NULL);
+    }
+
+    dpdk_context.rx_mbufs[iface.port_id].len = 0;
+
+    for (int i = 0; i < MAX_PKT_BURST; i++) {
+        /* Allocate TX packet buffer in DPDK context memory pool */
+        dpdk_context.tx_mbufs[iface.port_id].m_table[i] = rte_pktmbuf_alloc(dpdk_context.mempool);
+        assert(dpdk_context.tx_mbufs[iface.port_id].m_table[i] != NULL);
+    }
+
+    dpdk_context.tx_mbufs[iface.port_id].len = 0;
 
     return 0;
 }   
