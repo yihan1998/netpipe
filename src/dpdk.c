@@ -561,16 +561,6 @@ void RecvData(ArgStruct *p)
     //     printf("NetPIPE: read: error encountered, errno=%d\n", errno);
     //     exit(401);
     //   }
-    int recv_cnt = dpdk_recv_pkts(iface.port_id);
-    if (recv_cnt > 0) {
-        int len;
-        char * packet = dpdk_get_rxpkt(iface.port_id, i, &len);
-        int * offset = (int *)packet;
-        struct timeval curr;
-        gettimeofday(&curr, NULL);
-        memcpy(packet + sizeof(int), (char *)&curr, sizeof(struct timeval));
-        (*offset)++;
-    }
 }
 
 /* uint32_t is used to insure that the integer size is the same even in tests 
@@ -1495,7 +1485,6 @@ int main(int argc, char ** argv) {
             (*offset)++;
 
             char * packet = (char *)dpdk_get_txpkt(iface.port_id, 544);
-            struct timeval curr;
             gettimeofday(&curr, NULL);
             offset = (int *)packet;
             memcpy(packet, buff, 544);
