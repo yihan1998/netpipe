@@ -489,70 +489,88 @@ void PrepareToReceive(ArgStruct *p)
 
 void SendData(ArgStruct *p)
 {
-    int bytesWritten, bytesLeft;
-    char *q;
+    // int bytesWritten, bytesLeft;
+    // char *q;
 
-    bytesLeft = p->bufflen;
-    bytesWritten = 0;
-    q = p->s_ptr;
+    // bytesLeft = p->bufflen;
+    // bytesWritten = 0;
+    // q = p->s_ptr;
 
-    while (bytesLeft > 0) {
-        char * packet = (char *)dpdk_get_txpkt(iface.port_id, bytesLeft);
-        memcpy(packet, q, bytesLeft);
-        int send_cnt = dpdk_send_pkts(iface.port_id);
-        fprintf(stdout, " >> send %d packet\n", send_cnt);
-        fflush(stdout);
+    // while (bytesLeft > 0) {
+    //     char * packet = (char *)dpdk_get_txpkt(iface.port_id, bytesLeft);
+    //     memcpy(packet, q, bytesLeft);
+    //     int send_cnt = dpdk_send_pkts(iface.port_id);
+    //     fprintf(stdout, " >> send %d packet\n", send_cnt);
+    //     fflush(stdout);
 
-        bytesWritten = bytesLeft;
-        bytesLeft -= bytesWritten;
-        q += bytesWritten;
-    }
+    //     bytesWritten = bytesLeft;
+    //     bytesLeft -= bytesWritten;
+    //     q += bytesWritten;
+    // }
     
-    if (bytesWritten == -1)
-      {
-        printf("NetPIPE: write: error encountered, errno=%d\n", errno);
-        exit(401);
-      }
+    // if (bytesWritten == -1)
+    //   {
+    //     printf("NetPIPE: write: error encountered, errno=%d\n", errno);
+    //     exit(401);
+    //   }
+    char * packet = (char *)dpdk_get_txpkt(iface.port_id, 544);
+    struct timeval curr;
+    gettimeofday(&curr, NULL);
+    int * offset = (int *)packet;
+    memcpy(packet + sizeof(int), (char *)&curr, sizeof(struct timeval));
+    (*offset)++;
+    int send_cnt = dpdk_send_pkts(iface.port_id);
+    fflush(stdout);
 }
 
 void RecvData(ArgStruct *p)
 {
-    int bytesLeft;
-    int bytesRead;
-    char *q;
+    // int bytesLeft;
+    // int bytesRead;
+    // char *q;
 
-    bytesLeft = p->bufflen;
-    bytesRead = 0;
-    q = p->r_ptr;
+    // bytesLeft = p->bufflen;
+    // bytesRead = 0;
+    // q = p->r_ptr;
 
-    while (bytesLeft > 0) {
-        int recv_cnt = dpdk_recv_pkts(iface.port_id);
-        if (recv_cnt > 0) {
-            fprintf(stdout, " >> send %d packet\n", recv_cnt);
-            fflush(stdout);
-            /* Receive packets */
-            uint8_t * pkt;
+    // while (bytesLeft > 0) {
+    //     int recv_cnt = dpdk_recv_pkts(iface.port_id);
+    //     if (recv_cnt > 0) {
+    //         fprintf(stdout, " >> recv %d packet\n", recv_cnt);
+    //         fflush(stdout);
+    //         /* Receive packets */
+    //         uint8_t * pkt;
 
-            /* Process received packets */
-            for (int i = 0; i < recv_cnt; i++) {
-                /* Go through received packets */
-                pkt = dpdk_get_rxpkt(iface.port_id, i, &bytesRead);              
-                memcpy(q, pkt, bytesRead);
-                bytesLeft -= bytesRead;
-                q += bytesRead;
-            }
-        }
+    //         /* Process received packets */
+    //         for (int i = 0; i < recv_cnt; i++) {
+    //             /* Go through received packets */
+    //             pkt = dpdk_get_rxpkt(iface.port_id, i, &bytesRead);              
+    //             memcpy(q, pkt, bytesRead);
+    //             bytesLeft -= bytesRead;
+    //             q += bytesRead;
+    //         }
+    //     }
+    // }
+
+    // if (bytesLeft > 0 && bytesRead == 0)
+    //   {
+    //     printf("NetPIPE: \"end of file\" encountered on reading from socket\n");
+    //   }
+    // else if (bytesRead == -1)
+    //   {
+    //     printf("NetPIPE: read: error encountered, errno=%d\n", errno);
+    //     exit(401);
+    //   }
+    int recv_cnt = dpdk_recv_pkts(iface.port_id);
+    if (recv_cnt > 0) {
+        int len;
+        char * packet = dpdk_get_rxpkt(iface.port_id, i, &len);
+        int * offset = (int *)packet;
+        struct timeval curr;
+        gettimeofday(&curr, NULL);
+        memcpy(packet + sizeof(int), (char *)&curr, sizeof(struct timeval));
+        (*offset)++;
     }
-
-    if (bytesLeft > 0 && bytesRead == 0)
-      {
-        printf("NetPIPE: \"end of file\" encountered on reading from socket\n");
-      }
-    else if (bytesRead == -1)
-      {
-        printf("NetPIPE: read: error encountered, errno=%d\n", errno);
-        exit(401);
-      }
 }
 
 /* uint32_t is used to insure that the integer size is the same even in tests 
@@ -1415,17 +1433,76 @@ int main(int argc, char ** argv) {
     * one way at a time, this shouldn't be too far off anyway.
     */
     t0 = When();
-    for( n=0; n<100; n++) {
+    for( n=0; n<1; n++) {
         if( args.tr) {
-            SendData(&args);
-            RecvData(&args);
-            if( asyncReceive && n<99 )
-                PrepareToReceive(&args);
+
+            char * packet = (char *)dpdk_get_txpkt(iface.port_id, 544);
+            struct timeval curr;
+            gettimeofday(&curr, NULL);
+            int * offset = (int *)packet;
+            *offset = 0;
+            memcpy(packet + sizeof(int), (char *)&curr, sizeof(struct timeval));
+            (*offset)++;
+            int send_cnt = dpdk_send_pkts(iface.port_id);
+            fflush(stdout);
+
+            int bytesLeft = 544;
+            char buff[544];
+            int bytesRead;
+            char * q = buff;
+            while (bytesLeft > 0) {
+                int recv_cnt = dpdk_recv_pkts(iface.port_id);
+                if (recv_cnt > 0) {
+                    /* Receive packets */
+                    uint8_t * pkt;
+
+                    /* Process received packets */
+                    for (int i = 0; i < recv_cnt; i++) {
+                        /* Go through received packets */
+                        pkt = dpdk_get_rxpkt(iface.port_id, i, &bytesRead);              
+                        memcpy(q, pkt, bytesRead);
+                        bytesLeft -= bytesRead;
+                        q += bytesRead;
+                    }
+                }
+            }
         } else if( args.rcv) {
-            RecvData(&args);
-            if( asyncReceive && n<99 )
-                PrepareToReceive(&args);
-            SendData(&args);
+            int bytesLeft = 544;
+            char buff[544];
+            int bytesRead;
+            char * q = buff;
+            while (bytesLeft > 0) {
+                int recv_cnt = dpdk_recv_pkts(iface.port_id);
+                if (recv_cnt > 0) {
+                    /* Receive packets */
+                    uint8_t * pkt;
+
+                    /* Process received packets */
+                    for (int i = 0; i < recv_cnt; i++) {
+                        /* Go through received packets */
+                        pkt = dpdk_get_rxpkt(iface.port_id, i, &bytesRead);              
+                        memcpy(q, pkt, bytesRead);
+                        bytesLeft -= bytesRead;
+                        q += bytesRead;
+                    }
+                }
+            }
+
+            struct timeval curr;
+            gettimeofday(&curr, NULL);
+            int * offset = (int *)buff;
+            memcpy(buff + sizeof(int) + (*offset) * sizeof(struct timeval), (char *)&curr, sizeof(struct timeval));
+            (*offset)++;
+
+            char * packet = (char *)dpdk_get_txpkt(iface.port_id, 544);
+            struct timeval curr;
+            gettimeofday(&curr, NULL);
+            offset = (int *)packet;
+            memcpy(packet, buff, 544);
+            memcpy(packet + sizeof(int) + (*offset) * sizeof(struct timeval), (char *)&curr, sizeof(struct timeval));
+            (*offset)++;
+            int send_cnt = dpdk_send_pkts(iface.port_id);
+            fflush(stdout);
         }
     }
     tlast = (When() - t0)/200;
@@ -1473,348 +1550,6 @@ int main(int argc, char ** argv) {
         args.s_ptr = args.s_buff+args.soffset;
         args.r_ptr = args.r_buff+args.roffset;
     }
-
-        /**************************
-        * Main loop of benchmark *
-        **************************/
-
-    if( args.tr ) fprintf(stderr,"Now starting the main loop\n");
-
-    for ( n = 0, len = start, errFlag = 0; 
-            n < NSAMP - 3 && tlast < STOPTM && len <= end && !errFlag; 
-            len = len + inc, nq++ )
-    {
-
-        /* Exponentially increase the block size.  */
-
-        if (nq > 2) inc = ((nq % 2))? inc + inc: inc;
-       
-        /* This is a perturbation loop to test nearby values */
-
-        for (pert = ((perturbation > 0) && (inc > perturbation+1)) ? -perturbation : 0;
-            pert <= perturbation; 
-            n++, pert += ((perturbation > 0) && (inc > perturbation+1)) ? perturbation : perturbation+1)
-        {
-
-            /* Calculate how many times to repeat the experiment. */
-
-            if( args.tr ) {
-               if (nrepeat_const) {
-                   nrepeat = nrepeat_const;
-/*               } else if (len == start) {*/
-/*                   nrepeat = MAX( RUNTM/( 0.000020 + start/(8*1000) ), TRIALS);*/
-               } else {
-                   nrepeat = MAX((RUNTM / ((double)args.bufflen /
-                                  (args.bufflen - inc + 1.0) * tlast)),TRIALS);
-               }
-               SendRepeat(&args, nrepeat);
-           } else if( args.rcv ) {
-               RecvRepeat(&args, &nrepeat);
-           }
-
-           args.bufflen = len + pert;
-
-           if( args.tr ) {
-               fprintf(stderr,"%3d: %7d bytes %6d times --> ",
-                       n,args.bufflen,nrepeat);
-           }
-
-           if (args.cache) {
-               /* Allow cache effects.  We use only one buffer */
-               /* Allocate the buffer with room for alignment*/
-
-               MyMalloc(&args, args.bufflen+bufalign, args.soffset, args.roffset); 
-
-               /* Save buffer address */
-
-               args.r_buff_orig = args.r_buff;
-               args.s_buff_orig = args.r_buff;
-
-               /* Align buffer */
-
-               args.r_buff = AlignBuffer(args.r_buff, bufalign);
-               args.s_buff = args.r_buff;
-               
-               /* Initialize buffer with data
-                *
-                * NOTE: The buffers should be initialized with some sort of
-                * valid data, whether it is actually used for anything else,
-                * to get accurate results.  Performance increases noticeably
-                * if the buffers are left uninitialized, but this does not
-                * give very useful results as realworld apps tend to actually
-                * have data stored in memory.  We are not sure what causes
-                * the difference in performance at this time.
-                */
-
-               InitBufferData(&args, args.bufflen, args.soffset, args.roffset);
-
-
-               /* Post-alignment initialization */
-
-               AfterAlignmentInit(&args);
-
-               /* Initialize buffer pointers (We use r_ptr and s_ptr for
-                * compatibility with no-cache mode, as this makes the code
-                * simpler) 
-                */
-               /* offsets are zero by default so this saves an #ifdef */
-               args.r_ptr = args.r_buff+args.roffset;
-               args.s_ptr = args.r_buff+args.soffset;
-
-           } else {
-               /* Eliminate cache effects.  We use two distinct buffers */
-
-               /* this isn't truly set up for offsets yet */
-               /* Size of an aligned memory block including trailing padding */
-
-               len_buf_align = args.bufflen;
-               if(bufalign != 0)
-                 len_buf_align += bufalign - args.bufflen % bufalign;
- 
-               /* Initialize the buffers with data
-                *
-                * See NOTE above.
-                */
-               InitBufferData(&args, MEMSIZE, args.soffset, args.roffset); 
-               
-
-               /* Reset buffer pointers to beginning of pools */
-               args.r_ptr = args.r_buff+args.roffset;
-               args.s_ptr = args.s_buff+args.soffset;
-            }
-
-            bwdata[n].t = LONGTIME;
-/*            t2 = t1 = 0;*/
-
-            /* Finally, we get to transmit or receive and time */
-
-            /* NOTE: If a module is running that uses only one process (e.g.
-             * memcpy), we assume that it will always have the args.tr flag
-             * set.  Thus we make some special allowances in the transmit 
-             * section that are not in the receive section.
-             */
-
-            if( args.tr || args.bidir ) {
-                /*
-                   This is the transmitter: send the block TRIALS times, and
-                   if we are not streaming, expect the receiver to return each
-                   block.
-                */
-
-                for (i = 0; i < (integCheck ? 1 : TRIALS); i++) {                    
-                    if(args.preburst && asyncReceive && !streamopt) {
-
-                        /* We need to save the value of the recv ptr so
-                        * we can reset it after we do the preposts, in case
-                        * the module needs to use the same ptr values again
-                        * so it can wait on the last byte to change to indicate
-                        * the recv is finished.
-                        */
-
-                        SaveRecvPtr(&args);
-
-                        for(j=0; j<nrepeat; j++) {
-                            PrepareToReceive(&args);
-                            if(!args.cache) {
-                                AdvanceRecvPtr(&args, len_buf_align);
-                            }
-                        }
-
-                        ResetRecvPtr(&args);
-                    }
-
-                    /* Flush the cache using the dummy buffer */
-                    if (!args.cache) {
-                        flushcache(memcache, MEMSIZE/sizeof(int));
-                    }
-
-                    t0 = When();
-
-                    for (j = 0; j < nrepeat; j++) {
-                        if (!args.preburst && asyncReceive && !streamopt) {
-                            PrepareToReceive(&args);
-                        }
-
-                        if (integCheck) SetIntegrityData(&args);
-
-                        SendData(&args);
-
-                        if (!streamopt) {
-                            RecvData(&args);
-
-                            if (integCheck) VerifyIntegrity(&args);
-
-                            if(!args.cache) {
-                                AdvanceRecvPtr(&args, len_buf_align);
-                            }
-
-                        }
-                        
-                        /* Wait to advance send pointer in case RecvData uses
-                         * it (e.g. memcpy module).
-                         */
-                        if (!args.cache) {
-                            AdvanceSendPtr(&args, len_buf_align);
-                        }
-                    }
-
-                       /* t is the 1-directional trasmission time */
-
-                    t = (When() - t0)/ nrepeat;
-
-                    if( !streamopt && !args.bidir) t /= 2; /* Normal ping-pong */
-
-                    Reset(&args);
-
-/* NOTE: NetPIPE does each data point TRIALS times, bouncing the message
- * nrepeats times for each trial, then reports the lowest of the TRIALS
- * times.  -Dave Turner
- */
-                    bwdata[n].t = MIN(bwdata[n].t, t);
-/*                    t1 += t;*/
-/*                    t2 += t*t;*/
-                }
-
-                if (streamopt) {  /* Get time info from Recv node */
-                    RecvTime(&args, &bwdata[n].t);
-/*                    RecvTime(&args, &t1);*/
-/*                    RecvTime(&args, &t2);*/
-                }
-
-                   /* Calculate variance after completing this set of trials */
-
-/*                bwdata[n].variance = t2/TRIALS - t1/TRIALS * t1/TRIALS;*/
-
-            } else if( args.rcv ) {
-                /*
-                   This is the receiver: receive the block TRIALS times, and
-                   if we are not streaming, send the block back to the
-                   sender.
-                */
-                for (i = 0; i < (integCheck ? 1 : TRIALS); i++) {
-                    if (asyncReceive) {
-                       if (args.preburst) {
-
-                            /* We need to save the value of the recv ptr so
-                            * we can reset it after we do the preposts, in case
-                            * the module needs to use the same ptr values again
-                            * so it can wait on the last byte to change to 
-                            * indicate the recv is finished.
-                            */
-
-                            SaveRecvPtr(&args);
-
-                            for (j=0; j < nrepeat; j++) {
-                                PrepareToReceive(&args);
-                                if (!args.cache) {
-                                    AdvanceRecvPtr(&args, len_buf_align);
-                                }
-                         }
-                         
-                         ResetRecvPtr(&args);
-                         
-                       } else {
-                           PrepareToReceive(&args);
-                       }
-                      
-                    }
-                    
-                    /* Flush the cache using the dummy buffer */
-                    if (!args.cache) {
-                        flushcache(memcache, MEMSIZE/sizeof(int));
-                    }
-
-                    t0 = When();
-                    for (j = 0; j < nrepeat; j++) {
-                        RecvData(&args);
-
-                        if (integCheck) VerifyIntegrity(&args);
-
-                        if (!args.cache) { 
-                            AdvanceRecvPtr(&args, len_buf_align);
-                        }
-                        
-                        if (!args.preburst && asyncReceive && (j < nrepeat-1)) {
-                            PrepareToReceive(&args);
-                        }
-
-                        if (!streamopt) {
-                            if (integCheck) SetIntegrityData(&args);
-                            
-                            SendData(&args);
-
-                            if(!args.cache) {
-                                AdvanceSendPtr(&args, len_buf_align);
-                            }
-                        }
-
-                    }
-                    t = (When() - t0)/ nrepeat;
-
-                    if( !streamopt && !args.bidir) t /= 2; /* Normal ping-pong */
-
-                    Reset(&args);
-                    
-                    bwdata[n].t = MIN(bwdata[n].t, t);
-/*                    t1 += t;*/
-/*                    t2 += t*t;*/
-                }
-
-                if (streamopt) {  
-                    /* Recv proc calcs time and sends to Trans */
-                    SendTime(&args, &bwdata[n].t);
-/*                    SendTime(&args, &t1);*/
-/*                    SendTime(&args, &t2);*/
-                }
-            } 
-
-            /* Streaming mode doesn't really calculate correct latencies
-             * for small message sizes, and on some nics we can get
-             * zero second latency after doing the math.  Protect against
-             * this.
-             */
-            if(bwdata[n].t == 0.0) {
-                bwdata[n].t = 0.000001;
-            }
-            
-            tlast = bwdata[n].t;
-            bwdata[n].bits = args.bufflen * CHARSIZE * (1+args.bidir);
-            bwdata[n].bps = bwdata[n].bits / (bwdata[n].t * 1024 * 1024);
-            bwdata[n].repeat = nrepeat;
-            
-            if (args.tr) {
-                if(integCheck) {
-                  fprintf(out,"%8d %d", bwdata[n].bits / 8, nrepeat);
-
-                } else {
-                  fprintf(out,"%8d %lf %12.8lf",
-                        bwdata[n].bits / 8, bwdata[n].bps, bwdata[n].t);
-
-                }
-                fprintf(out, "\n");
-                fflush(out);
-            }
-    
-            /* Free using original buffer addresses since we may have aligned
-               r_buff and s_buff */
-
-            if (args.cache)
-                FreeBuff(args.r_buff_orig, NULL);
-            
-            if ( args.tr ) {
-                if(integCheck) {
-                    fprintf(stderr, " Integrity check passed\n");
-
-                } else {
-                    fprintf(stderr," %8.2lf Mbps in %10.2lf usec\n", 
-                            bwdata[n].bps, tlast*1.0e6);
-                }
-            }
-
-
-        } /* End of perturbation loop */
-
-    } /* End of main loop  */
  
     /* Free using original buffer addresses since we may have aligned
       r_buff and s_buff */
