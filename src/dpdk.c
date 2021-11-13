@@ -248,7 +248,7 @@ void Setup(ArgStruct *p)
     if (core_mempool == NULL) {
         rte_exit(EXIT_FAILURE, " cannot allocate mempool for core %d! err: %s\n", rte_lcore_id(), rte_lcore_id(), rte_strerror(rte_errno));
     } else {
-        fprintf(stdout, " mempool for core %d: %p", __func__, rte_lcore_id(), core_mempool);
+        fprintf(stdout, " mempool for core %d: %p\n", rte_lcore_id(), core_mempool);
         fflush(stdout);
     }
 
@@ -337,7 +337,7 @@ void Setup(ArgStruct *p)
         }
     }
 
-    fprintf(stdout, " done RX/TX queue allocation on core %d", rte_lcore_id());
+    fprintf(stdout, " done RX/TX queue allocation on core %d\n", rte_lcore_id());
     fflush(stdout);
     
     ret = rte_eth_promiscuous_enable(port_id);
