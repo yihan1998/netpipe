@@ -172,6 +172,8 @@ void Init(ArgStruct *p, int* pargc, char*** pargv) {
     p->tr = 0;     /* The transmitter will be set using the -h host flag. */
     p->rcv = 1;
 
+    lthread_set_affinity(0);
+
     /**
      * Configure parameters for EAL
      *  -l <core_list> : (start core, end core]
@@ -233,10 +235,7 @@ static struct rte_eth_txconf tx_conf = {
 
 void Setup(ArgStruct *p)
 {
-    char name[RTE_MEMPOOL_NAMESIZE];
-    snprintf(name, RTE_MEMPOOL_NAMESIZE - 1, "mempool_core_%d", rte_lcore_id());
-
-    core_mempool = rte_mempool_create(name, N_MBUF, 
+    core_mempool = rte_mempool_create("core_mempool", N_MBUF, 
                                 MBUF_SIZE, MEMPOOL_CACHE_SIZE, 
                                 sizeof(struct rte_pktmbuf_pool_private),
                                 rte_pktmbuf_pool_init, NULL,
