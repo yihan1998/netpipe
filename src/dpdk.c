@@ -693,6 +693,273 @@ void AfterAlignmentInit(ArgStruct *p)
 
 }
 
+/* Return the current time in seconds, using a double precision number.      */
+double When() {
+    struct timeval tp;
+    gettimeofday(&tp, NULL);
+    return ((double) tp.tv_sec + (double) tp.tv_usec * 1e-6);
+}
+
+/* 
+ * The mymemset() function fills the first n integers of the memory area 
+ * pointed to by ptr with the constant integer c. 
+ */
+void mymemset(int *ptr, int c, int n) {
+    int i;
+
+    for (i = 0; i < n; i++) 
+        *(ptr + i) = c;
+}
+
+/* Read the first n integers of the memmory area pointed to by ptr, to flush  
+ * out the cache   
+ */
+void flushcache(int *ptr, int n) {
+   static int flag = 0;
+   int    i; 
+
+   flag = (flag + 1) % 2; 
+   if ( flag == 0) 
+       for (i = 0; i < n; i++)
+           *(ptr + i) = *(ptr + i) + 1;
+   else
+       for (i = 0; i < n; i++) 
+           *(ptr + i) = *(ptr + i) - 1; 
+    
+}
+
+/* For integrity check, set each integer-sized block to the next consecutive
+ * integer, starting with the value 0 in the first block, and so on.  Earlier
+ * we made sure the memory allocated for the buffer is of size i*sizeof(int) +
+ * 1 so there is an extra byte that can be used as a flag to detect the end
+ * of a receive.
+ */
+void SetIntegrityData(ArgStruct *p) {
+    int i;
+    int num_segments;
+
+    num_segments = p->bufflen / sizeof(int);
+
+    for(i=0; i<num_segments; i++) {
+
+        *( (int*)p->s_ptr + i ) = i;
+
+    }
+}
+
+void VerifyIntegrity(ArgStruct *p) {
+    int i;
+    int num_segments;
+    int integrityVerified = 1;
+
+    num_segments = p->bufflen / sizeof(int);
+
+    for(i=0; i<num_segments; i++) {
+
+        if( *( (int*)p->r_ptr + i )  != i ) {
+
+        integrityVerified = 0;
+        break;
+
+        }
+
+    }
+
+
+    if(!integrityVerified) {
+        
+        fprintf(stderr, "Integrity check failed: Expecting %d but received %d\n",
+                i, *( (int*)p->r_ptr + i ) );
+
+        exit(-1);
+
+    }
+
+}  
+    
+void PrintUsage() {
+    printf("\n NETPIPE USAGE \n\n");
+#if ! defined(INFINIBAND) && !defined(OPENIB)
+    printf("a: asynchronous receive (a.k.a. preposted receive)\n");
+#endif
+    printf("B: burst all preposts before measuring performance\n");
+#if (defined(TCP) || defined(TCP6)) && ! defined(INFINIBAND)
+    printf("b: specify TCP send/receive socket buffer sizes\n");
+#endif
+
+#if defined(INFINIBAND) || defined(OPENIB)
+    printf("c: specify type of completion <-c type>\n"
+           "   valid types: local_poll, vapi_poll, event\n"
+           "   default: local_poll\n");
+#endif
+    
+#if defined(MPI2)
+    printf("g: use get instead of put\n");
+    printf("f: do not use fence during timing segment; may not work with\n");
+    printf("   all MPI-2 implementations\n");
+#endif
+
+#if defined(TCP) || defined(TCP6) || defined(SCTP) || defined(SCTP6) || defined(INFINIBAND) || defined(OPENIB)
+    printf("h: specify hostname of the receiver <-h host>\n");
+#endif
+
+    printf("I: Invalidate cache (measure performance without cache effects).\n"
+           "   This simulates data coming from main memory instead of cache.\n");
+    printf("i: Do an integrity check instead of measuring performance\n");
+    printf("l: lower bound start value e.g. <-l 1>\n");
+
+#if defined(INFINIBAND) || defined(OPENIB)
+    printf("m: set MTU for Infiniband adapter <-m mtu_size>\n");
+    printf("   valid sizes: 256, 512, 1024, 2048, 4096 (default 1024)\n");
+#endif
+
+    printf("n: Set a constant value for number of repeats <-n 50>\n");
+    printf("o: specify output filename <-o filename>\n");
+    printf("O: specify transmit and optionally receive buffer offsets <-O 1,3>\n");
+    printf("p: set the perturbation number <-p 1>\n"
+           "   (default = 3 Bytes, set to 0 for no perturbations)\n");
+
+#if (defined(TCP) || defined(TCP6) || defined(SCTP) || defined(SCTP6)) && ! defined(INFINIBAND) && !defined(OPENIB)
+    printf("r: reset sockets for every trial\n");
+#endif
+
+    printf("s: stream data in one direction only.\n");
+#if defined(MPI)
+    printf("S: Use synchronous sends.\n");
+#endif
+
+#if defined(INFINIBAND) || defined(OPENIB)
+    printf("t: specify type of communications <-t type>\n"
+           "   valid types: send_recv, send_recv_with_imm,\n"
+           "                rdma_write, rdma_write_with_imm\n"
+           "   defaul: send_recv\n");
+#endif
+#if defined(OPENIB)
+    printf("D: specify an OpenFabrics device/port combination\n"
+           "   to use on the local host.  For example:\n"
+           "      -D mthca0:1\n"
+           "   Uses the first port on the \"mthca0\" device\n"
+           "   (NOTE: ports are indexed from 1, not 0)\n"
+           "      -D mthca1\n"
+           "   Uses the first active port on the mtcha1 device\n"
+           "   No specification will result in using the first\n"
+           "   active port on any valid device.\n");
+#endif
+    
+    printf("u: upper bound stop value e.g. <-u 1048576>\n");
+ 
+#if defined(MPI)
+    printf("z: receive messages using the MPI_ANY_SOURCE flag\n");
+#endif
+
+    printf("2: Send data in both directions at the same time.\n");
+    printf("P: Set the port number to one other than the default.\n");
+#if defined(MPI)
+    printf("   May need to use -a to choose asynchronous communications for MPI/n");
+#endif
+#if (defined(TCP) || defined(TCP6) || defined(SCTP) || defined (SCTP6)) && !defined(INFINIBAND) && !defined(OPENIB)
+    printf("   The maximum test size is limited by the TCP buffer size\n");
+#endif
+#if defined(TCP)
+    printf("A: Use SDP Address familty (AF_INET_SDP)\n");
+#endif
+    printf("\n");
+}
+
+void* AlignBuffer(void* buff, int boundary) {
+    if (boundary == 0) {
+        return buff;
+    } else {
+        /* char* typecast required for cc on IRIX */
+        return ((char*)buff) + (boundary - ((unsigned long)buff % boundary) );
+    }
+    
+}
+
+void AdvanceSendPtr(ArgStruct* p, int blocksize) {
+
+    if(p->s_ptr + blocksize < p->s_buff + MEMSIZE - blocksize) {
+        /* Move the send buffer pointer forward if there is room */
+        p->s_ptr += blocksize;
+    } else {
+        /* Otherwise wrap around to the beginning of the aligned buffer */
+        p->s_ptr = p->s_buff;
+    }
+
+}
+
+void AdvanceRecvPtr(ArgStruct* p, int blocksize) {
+  /* Move the send buffer pointer forward if there is room */
+
+    if (p->r_ptr + blocksize < p->r_buff + MEMSIZE - blocksize) {
+        p->r_ptr += blocksize;
+    } else {
+        /* Otherwise wrap around to the beginning of the aligned buffer */
+        p->r_ptr = p->r_buff;
+    } 
+
+}
+
+void SaveRecvPtr(ArgStruct* p) {
+    /* Typecast prevents warning about loss of volatile qualifier */
+
+    p->r_ptr_saved = (void*)p->r_ptr; 
+}
+
+void ResetRecvPtr(ArgStruct* p) {
+    p->r_ptr = p->r_ptr_saved;
+}
+
+/* This is generic across all modules */
+void InitBufferData(ArgStruct *p, int nbytes, int soffset, int roffset) {
+    memset(p->r_buff, 'a', nbytes+MAX(soffset,roffset));
+    if(p->cache) {
+        /* If using cache mode, then we need to initialize the last byte
+        * to the proper value since the transmitter and receiver are waiting
+        * on different values to determine when the message has completely
+        * arrive.
+        */   
+        p->r_buff[(nbytes+MAX(soffset,roffset))-1] = 'a' + p->tr;
+    } else {
+        /* If using no-cache mode, then we have distinct send and receive
+        * buffers, so the send buffer starts out containing different values
+        * from the receive buffer
+        */
+        memset(p->s_buff, 'b', nbytes+soffset);
+    }
+
+}
+
+#if !defined(OPENIB) && !defined(INFINIBAND) && !defined(ARMCI) && !defined(LAPI) && !defined(GPSHMEM) && !defined(SHMEM) && !defined(GM) 
+
+void MyMalloc(ArgStruct *p, int bufflen, int soffset, int roffset) {
+    if((p->r_buff=(char *)malloc(bufflen+MAX(soffset,roffset)))==(char *)NULL) {
+        fprintf(stderr,"couldn't allocate memory for receive buffer\n");
+        exit(-1);
+    }
+       /* if pcache==1, use cache, so this line happens only if flushing cache */
+    
+    if(!p->cache) {
+        /* Allocate second buffer if limiting cache */
+        if((p->s_buff=(char *)malloc(bufflen+soffset))==(char *)NULL) {
+            fprintf(stderr,"couldn't allocate memory for send buffer\n");
+            exit(-1);
+        }
+    } 
+}
+
+void FreeBuff(char *buff1, char *buff2) {
+    if(buff1 != NULL) {
+        free(buff1);
+    }
+
+    if(buff2 != NULL) {
+        free(buff2);
+    }
+}
+
+#endif
+
 int main(int argc, char ** argv) {
     FILE        *out;           /* Output data file                          */
     char        s[255],s2[255],delim[255],*pstr; /* Generic strings          */
