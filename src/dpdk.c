@@ -385,14 +385,12 @@ uint8_t * dpdk_get_rxpkt(int port_id, int index, uint16_t * pkt_size) {
 
 /*----------------------------------------------------------------------------*/
 uint32_t dpdk_recv_pkts(int port_id) {
-    int start_core = 1;
-
     if (dpdk_context.rx_mbufs[port_id].len != 0) {
         free_pkts(dpdk_context.rx_mbufs[port_id].m_table, dpdk_context.rx_mbufs[port_id].len);
         dpdk_context.rx_mbufs[port_id].len = 0;
     }
 
-    int ret = rte_eth_rx_burst((uint8_t)port_id, rte_lcore_id() - start_core, dpdk_context.rx_mbufs[port_id].m_table, MAX_PKT_BURST);
+    int ret = rte_eth_rx_burst((uint8_t)port_id, rte_lcore_id(), dpdk_context.rx_mbufs[port_id].m_table, MAX_PKT_BURST);
     dpdk_context.rx_mbufs[port_id].len = ret;
 
     return ret;
@@ -419,8 +417,6 @@ uint8_t * dpdk_get_txpkt(int port_id, int pkt_size) {
 
 /*----------------------------------------------------------------------------*/
 uint32_t dpdk_send_pkts(int port_id) {
-    int start_core = 1;
-
     int total_pkt, pkt_cnt;
     total_pkt = pkt_cnt = dpdk_context.tx_mbufs[port_id].len;
 
@@ -430,7 +426,7 @@ uint32_t dpdk_send_pkts(int port_id) {
         int ret;
         do {
             /* Send packets until there is none in TX queue */
-            ret = rte_eth_tx_burst(port_id, rte_lcore_id() - start_core, pkts, pkt_cnt);
+            ret = rte_eth_tx_burst(port_id, rte_lcore_id(), pkts, pkt_cnt);
             pkts += ret;
             pkt_cnt -= ret;
         } while (pkt_cnt > 0);
