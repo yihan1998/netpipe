@@ -302,4 +302,4 @@ DPDK_CFLAGS = $(CFLAGS) $(LIBDPDK_CFLAGS)
 DPDK_LIB += $(LIBDPDK_LDFLAGS)
 
 dpdk: $(SRC)/dpdk.c $(SRC)/netpipe.c $(SRC)/netpipe.h 
-	$(CC) $(DPDK_CFLAGS) $(SRC)/dpdk.c $(SRC)/netpipe.c -DTCP -o NPdpdk -I$(SRC) $(DPDK_LIB)
+	$(CC) $(DPDK_CFLAGS) $(SRC)/dpdk.c $(SRC)/netpipe.c -DTCP -o NPdpdk -I$(SRC) $(DPDK_LIB) -lpthread

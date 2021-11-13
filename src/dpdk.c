@@ -13,8 +13,10 @@
 /*****************************************************************************/
 #include    "netpipe.h"
 
-#define _GNU_SOURCE
+#include <stdio.h>
+#define __USE_GNU
 #include <sched.h>
+#include <pthread.h>
 
 #include <sys/socket.h>
 #include <sys/ioctl.h>
