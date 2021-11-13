@@ -13,9 +13,12 @@
 /*****************************************************************************/
 #include    "netpipe.h"
 
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <sys/types.h>
 #include <ifaddrs.h>
 
-#include </usr/include/net/if.h>
+#include <net/if.h>
 
 #include <rte_common.h>
 #include <rte_mempool.h>
@@ -51,9 +54,9 @@
 #	define HOST_IP_FMT(ip)	BE_IP_FMT(ip)
 #endif
 
-struct iface_info {
-    struct list_head    list;
+#define IFACE_NAME_LEN 	16
 
+struct iface_info {
 	char                name[IFACE_NAME_LEN];
 
     int                 port_id;
@@ -87,6 +90,10 @@ struct dpdk_context {
     struct mbuf_table rx_mbufs[RTE_MAX_ETHPORTS];
     struct mbuf_table tx_mbufs[RTE_MAX_ETHPORTS];
 };
+
+struct dpdk_context dpdk_context;
+
+static struct rte_mempool * core_mempool;
 
 int doing_reset = 0;
 
@@ -132,7 +139,7 @@ static int probe_iface() {
             /* Create Socket */
             int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
             if(sock == -1) {
-                logging(INFO, " [%s on core %d] socket allocation failed!", __func__, rte_lcore_id());
+                fprintf(stdout, " [%s on core %d] socket allocation failed!", __func__, rte_lcore_id());
                 exit(1);
             }
 
@@ -183,7 +190,7 @@ void Init(ArgStruct *p, int* pargc, char*** pargv) {
 
     if (ret < 0) {
         fprintf(stderr, " rte_eal_init() failed!\n");
-        return -1;
+        exit(1);
     }
 
     /* Find all available interfaces we can use */
@@ -201,25 +208,42 @@ void Init(ArgStruct *p, int* pargc, char*** pargv) {
     
     /* Probe all interfaces and add them to probed_iface_list */
     probe_iface();
-
-    return 0;
 }
+
+static struct rte_eth_rxconf rx_conf = {
+	.rx_thresh = {
+		.pthresh = 8,
+		.hthresh = 8,
+		.wthresh = 4,
+	},
+	.rx_free_thresh = 32,
+};
+
+static struct rte_eth_txconf tx_conf = {
+	.tx_thresh = {
+		.pthresh = 36,
+		.hthresh = 0,
+		.wthresh = 0,
+	},
+	.tx_free_thresh = 0,
+	.tx_rs_thresh = 0,
+};
 
 void Setup(ArgStruct *p)
 {
     char name[RTE_MEMPOOL_NAMESIZE];
     snprintf(name, RTE_MEMPOOL_NAMESIZE - 1, "mempool_core_%d", rte_lcore_id());
 
-    core_mempool[rte_lcore_id()] = rte_mempool_create(name, N_MBUF, 
+    core_mempool = rte_mempool_create(name, N_MBUF, 
                                 MBUF_SIZE, MEMPOOL_CACHE_SIZE, 
                                 sizeof(struct rte_pktmbuf_pool_private),
                                 rte_pktmbuf_pool_init, NULL,
                                 rte_pktmbuf_init, NULL, 
                                 rte_socket_id(), MEMPOOL_F_SP_PUT | MEMPOOL_F_SC_GET);
-    if (core_mempool[rte_lcore_id()] == NULL) {
+    if (core_mempool == NULL) {
         rte_exit(EXIT_FAILURE, " cannot allocate mempool for core %d! err: %s\n", rte_lcore_id(), rte_lcore_id(), rte_strerror(rte_errno));
     } else {
-        fprintf(stdout, " mempool for core %d: %p", __func__, rte_lcore_id(), core_mempool[rte_lcore_id()]);
+        fprintf(stdout, " mempool for core %d: %p", __func__, rte_lcore_id(), core_mempool);
     }
 
     struct rte_eth_conf port_conf = {
@@ -414,7 +438,7 @@ readFully(int fd, void *obuf, int len)
             /* Process received packets */
             for (int i = 0; i < recv_cnt; i++) {
                 /* Go through received packets */
-                pkt = io_module->get_rxpkt(iface.port_id, i, &len);              
+                pkt = dpdk_get_rxpkt(iface.port_id, i, &len);              
                 memcpy(buf, pkt, len);
                 bytesLeft -= bytesRead;
                 buf += bytesRead;
@@ -435,7 +459,7 @@ void Sync(ArgStruct *p)
     //     perror("NetPIPE: error writing or reading synchronization string");
     //     exit(3);
     //   }
-    char * packet = (char *)dpdk_get_txpkt(iface.port_id, bytesLeft);
+    char * packet = (char *)dpdk_get_txpkt(iface.port_id, strlen(s));
     memcpy(packet, s, strlen(s));
     dpdk_send_pkts(iface.port_id);
 
@@ -501,7 +525,7 @@ void RecvData(ArgStruct *p)
             /* Process received packets */
             for (int i = 0; i < recv_cnt; i++) {
                 /* Go through received packets */
-                pkt = io_module->get_rxpkt(iface.port_id, i, &bytesRead);              
+                pkt = dpdk_get_rxpkt(iface.port_id, i, &bytesRead);              
                 memcpy(q, pkt, bytesRead);
                 bytesLeft -= bytesRead;
                 q += bytesRead;
