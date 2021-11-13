@@ -345,6 +345,8 @@ void Setup(ArgStruct *p)
         rte_exit(EXIT_FAILURE, " rte_eth_dev_start:err = %d, port = %u", ret, (unsigned) port_id);
     }
 
+    dpdk_context.mempool = core_mempool;
+
     for (int i = 0; i < MAX_PKT_BURST; i++) {
         /* Allocate RX packet buffer in DPDK context memory pool */
         dpdk_context.rx_mbufs[iface.port_id].m_table[i] = rte_pktmbuf_alloc(dpdk_context.mempool);
