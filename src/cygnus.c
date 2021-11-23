@@ -1,7 +1,7 @@
 #include    "netpipe.h"
 
-#include "cetus.h"
-#include "cetus_api.h"
+#include "cygnus.h"
+#include "cygnus_api.h"
 
 #include "mthread.h"
 
@@ -37,7 +37,7 @@ void Setup(ArgStruct *p) {
     bzero((char *) lsin1, sizeof(*lsin1));
     bzero((char *) lsin2, sizeof(*lsin2));  
 
-    if ((sockfd = cetus_socket(socket_family, SOCK_STREAM, 0)) < 0){ 
+    if ((sockfd = cygnus_socket(socket_family, SOCK_STREAM, 0)) < 0){ 
         printf("NetPIPE: can't open stream socket! errno=%d\n", errno);
         exit(-4);
     }
@@ -70,7 +70,7 @@ void Setup(ArgStruct *p) {
         lsin1->sin_addr.s_addr = htonl(INADDR_ANY);
         lsin1->sin_port        = htons(p->port);
         
-        if (cetus_bind(sockfd, (struct sockaddr *)lsin1, sizeof(*lsin1)) < 0){
+        if (cygnus_bind(sockfd, (struct sockaddr *)lsin1, sizeof(*lsin1)) < 0){
             printf("NetPIPE: server: bind on local address failed! errno=%d", errno);
             exit(-6);
         }
@@ -93,7 +93,7 @@ void establish(ArgStruct *p) {
 
     if( p->tr ){
 
-        while(cetus_connect(p->commfd, (struct sockaddr *) &(p->prot.sin1), sizeof(p->prot.sin1)) < 0 && errno != EINPROGRESS) {
+        while(cygnus_connect(p->commfd, (struct sockaddr *) &(p->prot.sin1), sizeof(p->prot.sin1)) < 0 && errno != EINPROGRESS) {
 
             /* If we are doing a reset and we get a connection refused from
             * the connect() call, assume that the other node has not yet
@@ -110,8 +110,8 @@ void establish(ArgStruct *p) {
     } else if( p->rcv ) {
 
         /* SERVER */
-        cetus_listen(p->servicefd, 5);
-        p->commfd = cetus_accept(p->servicefd, (struct sockaddr *) &(p->prot.sin2), &clen);
+        cygnus_listen(p->servicefd, 5);
+        p->commfd = cygnus_accept(p->servicefd, (struct sockaddr *) &(p->prot.sin2), &clen);
 
         if(p->commfd < 0){
             printf("Server: Accept Failed! errno=%d\n",errno);
@@ -131,16 +131,16 @@ void CleanUp2(ArgStruct *p) {
 
     if (p->tr) {
 
-        cetus_write(p->commfd, quit, 5);
-        cetus_read(p->commfd, quit, 5);
-        cetus_close(p->commfd);
+        cygnus_write(p->commfd, quit, 5);
+        cygnus_read(p->commfd, quit, 5);
+        cygnus_close(p->commfd);
 
     } else if( p->rcv ) {
 
-        cetus_read(p->commfd, quit, 5);
-        cetus_write(p->commfd, quit, 5);
-        cetus_close(p->commfd);
-        cetus_close(p->servicefd);
+        cygnus_read(p->commfd, quit, 5);
+        cygnus_write(p->commfd, quit, 5);
+        cygnus_close(p->commfd);
+        cygnus_close(p->servicefd);
 
     }
 }
@@ -179,7 +179,7 @@ static int readFully(int fd, void *obuf, int len) {
     char *buf = (char *) obuf;
     int bytesRead = 0;
 
-    while (bytesLeft > 0 && (bytesRead = cetus_read(fd, (void *) buf, bytesLeft)) > 0) {
+    while (bytesLeft > 0 && (bytesRead = cygnus_read(fd, (void *) buf, bytesLeft)) > 0) {
         bytesLeft -= bytesRead;
         buf += bytesRead;
     }
@@ -190,7 +190,7 @@ static int readFully(int fd, void *obuf, int len) {
 void Sync(ArgStruct *p) {
     char s[] = "SyncMe", response[] = "      ";
 
-    if (cetus_write(p->commfd, s, strlen(s)) < 0 || readFully(p->commfd, response, strlen(s)) < 0) {
+    if (cygnus_write(p->commfd, s, strlen(s)) < 0 || readFully(p->commfd, response, strlen(s)) < 0) {
         perror("NetPIPE: error writing or reading synchronization string");
         exit(3);
     }
@@ -215,7 +215,7 @@ void SendData(ArgStruct *p) {
     bytesLeft = p->bufflen;
     bytesWritten = 0;
     q = p->s_ptr;
-    while (bytesLeft > 0 && (bytesWritten = cetus_write(p->commfd, q, bytesLeft)) > 0) {
+    while (bytesLeft > 0 && (bytesWritten = cygnus_write(p->commfd, q, bytesLeft)) > 0) {
         bytesLeft -= bytesWritten;
         q += bytesWritten;
     }
@@ -234,7 +234,7 @@ void RecvData(ArgStruct *p) {
     bytesLeft = p->bufflen;
     bytesRead = 0;
     q = p->r_ptr;
-    while (bytesLeft > 0 && (bytesRead = cetus_read(p->commfd, q, bytesLeft)) > 0) {
+    while (bytesLeft > 0 && (bytesRead = cygnus_read(p->commfd, q, bytesLeft)) > 0) {
         bytesLeft -= bytesRead;
         q += bytesRead;
     }
@@ -262,7 +262,7 @@ void SendTime(ArgStruct *p, double *t) {
 
     /* Send time in network order */
     ntime = htonl(ltime);
-    if (cetus_write(p->commfd, (char *)&ntime, sizeof(uint32_t)) < 0) {
+    if (cygnus_write(p->commfd, (char *)&ntime, sizeof(uint32_t)) < 0) {
         printf("NetPIPE: write failed in SendTime: errno=%d\n", errno);
         exit(301);
     }
@@ -294,7 +294,7 @@ void SendRepeat(ArgStruct *p, int rpt) {
     lrpt = rpt;
     /* Send repeat count as a long in network order */
     nrpt = htonl(lrpt);
-    if (cetus_write(p->commfd, (void *) &nrpt, sizeof(uint32_t)) < 0) {
+    if (cygnus_write(p->commfd, (void *) &nrpt, sizeof(uint32_t)) < 0) {
         printf("NetPIPE: write failed in SendRepeat: errno=%d\n", errno);
         exit(304);
     }
@@ -319,7 +319,7 @@ void RecvRepeat(ArgStruct *p, int *rpt) {
 }
 
 void * netpipe_main(void * arg) {
-    struct cetus_param * param = (struct cetus_param *)arg;
+    struct cygnus_param * param = (struct cygnus_param *)arg;
 
     int argc = param->argc;
     char ** argv = param->argv;
@@ -1478,7 +1478,7 @@ void FreeBuff(char *buff1, char *buff2) {
 #endif
 
 int netpipe_test(void * arg) {
-    cetus_init((struct cetus_param *)arg);
+    cygnus_init((struct cygnus_param *)arg);
 
     int ret;
     mthread_t mid;
@@ -1505,9 +1505,9 @@ int netpipe_test(void * arg) {
 }
 
 int main(int argc, char ** argv) {
-    struct cetus_param * param = cetus_config(argc, argv);
+    struct cygnus_param * param = cygnus_config(argc, argv);
 
-    cetus_spawn(netpipe_test, param);
+    cygnus_spawn(netpipe_test, param);
 
     fprintf(stdout, " [%s on core %d] test finished, return from main", __func__, lcore_id);
 

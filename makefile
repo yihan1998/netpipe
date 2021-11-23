@@ -282,17 +282,17 @@ atoll: $(SRC)/atoll.c $(SRC)/netpipe.c $(SRC)/netpipe.h
         $(SRC)/atoll.c -o NPatoll \
         -I$(PALMS_PATH)/include -L$(PALMS_PATH)/lib -latoll
 
-CETUS_DIR = /home/yihan-18/nus-sys/cetus
-CETUS_CFLAGS = -O3 -g -fno-stack-protector -fPIC
-CETUS_INC = -I/usr/include/ -I$(CETUS_DIR)/Cetus/include/ -I$(CETUS_DIR)/mthread/include/
-CETUS_LIB = -L$(CETUS_DIR)/mthread -lmthread -L$(CETUS_DIR)/Cetus -lcetus
+CYGNUS_DIR = /home/yihan-18/nus-sys/cygnus
+CYGNUS_CFLAGS = -O3 -g -fno-stack-protector -fPIC
+CYGNUS_INC = -I/usr/include/ -I$(CETUS_DIR)/Cygnus/include/ -I$(CETUS_DIR)/mthread/include/
+CYGNUS_LIB = -L$(CETUS_DIR)/mthread -lmthread -L$(CETUS_DIR)/Cygnus -lcygnus
 
 # DPDK
 LIBDPDK_CFLAGS := $(shell pkg-config --cflags libdpdk)
 LIBDPDK_LDFLAGS := $(shell pkg-config --libs libdpdk)
-CETUS_CFLAGS += $(LIBDPDK_CFLAGS)
-CETUS_LIB += $(LIBDPDK_LDFLAGS)
+CYGNUS_CFLAGS += $(LIBDPDK_CFLAGS)
+CYGNUS_LIB += $(LIBDPDK_LDFLAGS)
 
-cetus: $(SRC)/cetus.c $(SRC)/netpipe.h 
-	$(CC) $(CETUS_CFLAGS) $(SRC)/cetus.c -o NPcetus \
-        -DTCP $(CETUS_INC) $(CETUS_LIB)
+cygnus: $(SRC)/cygnus.c $(SRC)/netpipe.h 
+	$(CC) $(CYGNUS_CFLAGS) $(SRC)/cygnus.c -o NPcygnus \
+        -DTCP $(CYGNUS_INC) $(CYGNUS_LIB)
