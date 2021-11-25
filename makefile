@@ -282,7 +282,7 @@ atoll: $(SRC)/atoll.c $(SRC)/netpipe.c $(SRC)/netpipe.h
         $(SRC)/atoll.c -o NPatoll \
         -I$(PALMS_PATH)/include -L$(PALMS_PATH)/lib -latoll
 
-CYGNUS_DIR = /home/yihan-18/nus-sys/cygnus
+CYGNUS_DIR = /home/yihan/cygnus
 CYGNUS_CFLAGS = -O3 -g -fno-stack-protector -fPIC
 CYGNUS_INC = -I/usr/include/ -I$(CETUS_DIR)/Cygnus/include/ -I$(CETUS_DIR)/mthread/include/
 CYGNUS_LIB = -L$(CETUS_DIR)/mthread -lmthread -L$(CETUS_DIR)/Cygnus -lcygnus
