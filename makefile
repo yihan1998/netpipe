@@ -97,16 +97,15 @@ UTIL_FLD 	= $(MTCP_DIR)/util
 UTIL_INC 	= -I${UTIL_FLD}/include
 UTIL_OBJ 	= ${UTIL_FLD}/http_parsing.o ${UTIL_FLD}/tdate_parse.o ${UTIL_FLD}/netlib.o
 
-# dpdk-specific variables
-RTE_SDK=/home/yihan-18/nus-sys/cetus/dpdk
-RTE_TARGET=x86_64-native-linuxapp-gcc
-ifeq ($(MTCP_DPDK),1)
-DPDK_MACHINE_LINKER_FLAGS=${RTE_SDK}/${RTE_TARGET}/lib/ldflags.txt
-DPDK_MACHINE_LDFLAGS=$(shell cat ${DPDK_MACHINE_LINKER_FLAGS})
-DPDK_INC = ${RTE_SDK}/${RTE_TARGET}/include
-MTCP_INC += -I$(MTCP_DIR)/io_engine/include -I${DPDK_INC} 
-MTCP_LIB += -lrt ${MTCP_FLD}/lib/libmtcp.a -lnuma -lmtcp -lpthread -lrt -ldl -lgmp -L${RTE_SDK}/${RTE_TARGET}/lib ${DPDK_MACHINE_LDFLAGS}
-endif
+# util library and header
+MTCP_INC = -I./include/ ${UTIL_INC} ${MTCP_INC} -I${UTIL_FLD}/include -I/home/yihan/mtcp/io_engine/include
+MTCP_LIB = -lrt -march=native ${MTCP_FLD}/lib/libmtcp.a -lnuma -lmtcp -lpthread -lrt -ldl -lgmp ${MTCP_LIB} -lpthread 
+
+# DPDK
+LIBDPDK_CFLAGS := $(shell pkg-config --cflags libdpdk)
+LIBDPDK_LDFLAGS := $(shell pkg-config --libs libdpdk)
+MTCP_INC += $(LIBDPDK_CFLAGS)
+MTCP_LIB += $(LIBDPDK_LDFLAGS)
 
 mtcp: $(SRC)/mtcp.c $(SRC)/netpipe.c $(SRC)/netpipe.h 
 	$(CC) $(CFLAGS) -march=native $(MTCP_TARGET) $(SRC)/netpipe.c $(SRC)/mtcp.c -DTCP -o NPmtcp -I$(SRC) $(MTCP_INC) $(UTIL_OBJ) $(MTCP_LIB)
