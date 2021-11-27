@@ -99,16 +99,16 @@ UTIL_OBJ 	= ${UTIL_FLD}/http_parsing.o ${UTIL_FLD}/tdate_parse.o ${UTIL_FLD}/net
 
 # util library and header
 MTCP_CFLAGS = $(CFLAGS) -I./include/ ${UTIL_INC} ${MTCP_INC} -I${UTIL_FLD}/include -I/home/yihan/mtcp/io_engine/include
-MTCP_LIB = -lrt -march=native ${MTCP_FLD}/lib/libmtcp.a -lnuma -lmtcp -lpthread -lrt -ldl -lgmp ${MTCP_LIB} -lpthread 
+MTCP_LDFLAGS = -lrt -march=native ${MTCP_FLD}/lib/libmtcp.a -lnuma -lmtcp -lpthread -lrt -ldl -lgmp ${MTCP_LIB} -lpthread 
 
 # DPDK
 LIBDPDK_CFLAGS := $(shell pkg-config --cflags libdpdk)
 LIBDPDK_LDFLAGS := $(shell pkg-config --libs libdpdk)
 MTCP_CFLAGS += $(LIBDPDK_CFLAGS)
-MTCP_LIB += $(LIBDPDK_LDFLAGS)
+MTCP_LDFLAGS += $(LIBDPDK_LDFLAGS)
 
 mtcp: $(SRC)/mtcp.c $(SRC)/netpipe.c $(SRC)/netpipe.h 
-	$(CC) $(MTCP_CFLAGS) -march=native $(MTCP_TARGET) $(SRC)/netpipe.c $(SRC)/mtcp.c -DTCP -o NPmtcp -I$(SRC) $(MTCP_INC) $(UTIL_OBJ) $(MTCP_LIB)
+	$(CC) $(MTCP_CFLAGS) -march=native $(MTCP_TARGET) $(SRC)/netpipe.c $(SRC)/mtcp.c -DTCP -o NPmtcp -I$(SRC) $(MTCP_INC) $(UTIL_OBJ) $(MTCP_LDFLAGS)
 
 tcp6: $(SRC)/tcp.c $(SRC)/netpipe.c $(SRC)/netpipe.h 
 	$(CC) $(CFLAGS) $(SRC)/netpipe.c $(SRC)/tcp6.c -DTCP6 \
