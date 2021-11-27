@@ -22,6 +22,7 @@
 #include <sys/resource.h>   /* getrusage() */
 #include <stdlib.h>         /* malloc(3) */
 #include <unistd.h>         /* getopt, read, write, ... */
+#include <sched.h>
 
 /* Handle the case of building on MacOS X */
 #if defined(__APPLE__)

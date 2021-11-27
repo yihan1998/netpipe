@@ -50,6 +50,7 @@ int main(int argc, char **argv)
                 len,            /* Number of bytes to be transmitted         */
                 inc=0,          /* Increment value                           */
                 perturbation=DEFPERT, /* Perturbation value                  */
+                core=0,         /* On core 0 by default */
                 pert,
                 start= 1,       /* Starting value for signature curve        */
                 end=MAXINT,     /* Ending value for signature curve          */
@@ -97,7 +98,7 @@ int main(int argc, char **argv)
 #if ! defined(TCGMSG)
 
     /* Parse the arguments. See Usage for description */
-    while ((c = getopt(argc, argv, "AXSO:rIiszgfaB2h:p:o:l:u:b:m:n:t:c:d:D:P:")) != -1)
+    while ((c = getopt(argc, argv, "AXSO:rIiszgfaB2h:p:o:l:u:b:m:n:t:c:d:D:P:C:")) != -1)
     {
         switch(c)
         {
@@ -126,6 +127,14 @@ int main(int argc, char **argv)
                          printf("Using no perturbations\n\n");
                       }
                       break;
+            
+            case 'C': core = atoi(optarg);
+                      cpu_set_t mask; 
+                      CPU_ZERO(&mask);
+                      CPU_SET(core, &mask); 
+                      if (sched_setaffinity(0, sizeof(mask), &mask) < 0) {
+                        perror("sched_setaffinity");
+                      }
 
             case 'B': if(integCheck == 1) {
                         fprintf(stderr, "Integrity check not supported with prepost burst\n");
