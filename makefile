@@ -84,7 +84,7 @@ clean:
 tcp: $(SRC)/tcp.c $(SRC)/netpipe.c $(SRC)/netpipe.h 
 	$(CC) $(CFLAGS) $(SRC)/netpipe.c $(SRC)/tcp.c -DTCP -o NPtcp -I$(SRC)
 
-MTCP_DIR 	= /home/yihan-18/mtcp
+MTCP_DIR 	= /home/yihan/mtcp
 
 MTCP_DPDK	= 1
 
