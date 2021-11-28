@@ -362,7 +362,8 @@ void * netpipe_main(void * arg) {
 
     /* Initialize vars that may change from default due to arguments */
 
-    strcpy(s, "np.out");   /* Default output file */
+    char output[] = "np.out";
+    stpncpy(s, output, strlen(output));   /* Default output file */
 
     /* Let modules initialize related vars, and possibly call a library init
        function that requires argc and argv */
