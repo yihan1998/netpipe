@@ -844,7 +844,7 @@ void * netpipe_main(void * arg) {
         args.s_ptr = args.s_buff+args.soffset;
         args.r_ptr = args.r_buff+args.roffset;
     }
-
+#if 0
         /**************************
         * Main loop of benchmark *
         **************************/
@@ -1206,7 +1206,7 @@ void * netpipe_main(void * arg) {
     }
 
     if (args.tr) fclose(out);
-         
+#endif
     CleanUp(&args);
     return 0;
 }
