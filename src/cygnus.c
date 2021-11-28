@@ -356,7 +356,8 @@ void * netpipe_main(void * arg) {
                 tlast,          /* Time for the last transmission            */
                 latency;        /* Network message latency                   */
 
-    Data        bwdata[NSAMP];  /* Bandwidth curve data                      */
+    // Data        bwdata[NSAMP];  /* Bandwidth curve data                      */
+    Data        * bwdata = (Data *)calloc(NSAMP, sizeof(Data));  /* Bandwidth curve data                      */
 
     int         integCheck=0;   /* Integrity check                           */
 
