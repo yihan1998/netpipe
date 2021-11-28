@@ -702,7 +702,7 @@ void * netpipe_main(void * arg) {
         }
     }
 #endif
-    while ((c = getopt_long(argc, argv, "", opts, NULL)) {
+    while ((c = getopt_long(argc, argv, "", opts, NULL)) != -1) {
         switch(c) {
             case PERTURBATION:
                         perturbation = atoi(optarg);
