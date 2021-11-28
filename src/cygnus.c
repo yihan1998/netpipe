@@ -325,7 +325,7 @@ enum cfg_params {
     END,
     HOST,
     PORT,
-    REPORT,
+    REPEAT,
 };
 
 static struct option opts[] = {
@@ -739,7 +739,6 @@ void * netpipe_main(void * arg) {
                         args.host = (char *)malloc(strlen(optarg)+1);
                         strcpy(args.host, optarg);
                         break;
-
 
 	        case PORT:   
                         printf(" >> port: %s\n", optarg);
