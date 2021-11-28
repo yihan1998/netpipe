@@ -980,7 +980,7 @@ void * netpipe_main(void * arg) {
                fprintf(stderr,"%3d: %7d bytes %6d times --> ",
                        n,args.bufflen,nrepeat);
            }
-#if 0
+
            if (args.cache) {
                /* Allow cache effects.  We use only one buffer */
                /* Allocate the buffer with room for alignment*/
@@ -1044,7 +1044,7 @@ void * netpipe_main(void * arg) {
                args.r_ptr = args.r_buff+args.roffset;
                args.s_ptr = args.s_buff+args.soffset;
             }
-#endif
+
             bwdata[n].t = LONGTIME;
 /*            t2 = t1 = 0;*/
 
