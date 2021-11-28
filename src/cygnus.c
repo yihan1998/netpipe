@@ -318,6 +318,41 @@ void RecvRepeat(ArgStruct *p, int *rpt) {
     *rpt = lrpt;
 }
 
+enum cfg_params {
+    PERTURBATION,
+    OUTPUT,
+    START,
+    END,
+    HOST,
+    PORT,
+    REPORT,
+};
+
+static struct option opts[] = {
+    {   .name = "perturbation",
+        .has_arg = required_argument,
+        .val = PERTURBATION },
+    {   .name = "output",
+        .has_arg = required_argument,
+        .val = OUTPUT },
+    {   .name = "start",
+        .has_arg = required_argument,
+        .val = START },
+    {   .name = "end",
+        .has_arg = required_argument,
+        .val = END },
+    {   .name = "host",
+        .has_arg = required_argument,
+        .val = HOST },
+    {   .name = "port",
+        .has_arg = required_argument,
+        .val = PORT },
+    {   .name = "repeat",
+        .has_arg = required_argument,
+        .val = REPEAT },
+    {0,0,0,0}
+};
+
 void * netpipe_main(void * arg) {
     struct cygnus_param * param = (struct cygnus_param *)arg;
 
@@ -396,7 +431,7 @@ void * netpipe_main(void * arg) {
     for (int i = 0; i < argc; i++) {
         printf(" argc[%d]: %s\n", i, argv[i]);
     }
-    
+#if 0    
     while ((c = getopt(argc, argv, "AXSO:rIiszgfaB2h:p:o:l:u:b:m:n:t:c:d:D:P:")) != -1) {
         switch(c) {
 	        case 'A':   args.use_sdp=1;
@@ -659,6 +694,61 @@ void * netpipe_main(void * arg) {
 	        case 'X':   debug_wait = 1;
                         printf("Enableing debug wait!\n");
                         printf("Attach to pid %d and set debug_wait to 0 to conttinue\n", getpid());
+                        break;
+
+            // default:    PrintUsage(); 
+            //             exit(-12);
+            default:    break; 
+        }
+    }
+#endif
+    while ((c = getopt_long(argc, argv, "", opts, NULL)) {
+        switch(c) {
+            case PERTURBATION:
+                        perturbation = atoi(optarg);
+                        if( perturbation > 0 ) {
+                            printf("Using a perturbation value of %d\n\n", perturbation);
+                        } else {
+                            perturbation = 0;
+                            printf("Using no perturbations\n\n");
+                        }
+                        break;
+
+            case OUTPUT:   
+                        strcpy(s,optarg);
+                        printf("Sending output to %s\n", s); fflush(stdout);
+                        break;
+
+            case START:   
+                        printf(" >> start with: %s Bytes\n", optarg);
+                        start = atoi(optarg);
+                        if (start < 1) {
+                            fprintf(stderr,"Need a starting value >= 1\n");
+                            exit(0);
+                        }
+                        break;
+
+            case END:   
+                        printf(" >> end with: %s Bytes\n", optarg);
+                        end = atoi(optarg);
+                        break;
+
+            case HOST:   
+                        args.tr = 1;       /* -h implies transmit node */
+                        args.rcv = 0;
+                        args.host = (char *)malloc(strlen(optarg)+1);
+                        strcpy(args.host, optarg);
+                        break;
+
+
+	        case PORT:   
+                        printf(" >> port: %s\n", optarg);
+                        args.port = atoi(optarg);
+		                break;
+
+            case REPEAT:   
+                        printf(" >> repeat for %s\n", optarg);
+                        nrepeat_const = atoi(optarg);
                         break;
 
             // default:    PrintUsage(); 
