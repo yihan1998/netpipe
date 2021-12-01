@@ -179,8 +179,8 @@ int main(int argc, char **argv)
                         fprintf(stderr,"Need a starting value >= 1\n");
                         exit(0);
                       }
-                      break;
                       printf("Start from %d bytes\n\n", start);
+                      break;
 
             case 'u': end = atoi(optarg);
                       printf("End until %d bytes\n\n", end);
