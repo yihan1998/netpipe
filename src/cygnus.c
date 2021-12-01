@@ -1574,7 +1574,7 @@ int netpipe_test(void * arg) {
     int ret;
     mthread_t mid;
     
-    // sail_init();
+    sail_init();
     
     /* Create polling thread */
     if((ret = mthread_create(&mid, NULL, netpipe_main, arg)) < 0) {
@@ -1592,7 +1592,7 @@ int netpipe_test(void * arg) {
 
     fprintf(stdout, "[%s on core %d] mthread %lu joined!\n", __func__, lcore_id, mid);
 
-    // sail_exit();
+    sail_exit();
 }
 
 int main(int argc, char ** argv) {
