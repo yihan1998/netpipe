@@ -9,14 +9,14 @@ fi
 
 case $1 in
     "tcp")
-        ./NPtcp -p 0 -C 0 -l 1 -u 8192 -b 8192 -P 80 "${arg}"
+        ./NPtcp -p 0 -C 0 -l 1 -u 8192 -b 8192 -P 80 $(args)
         ;;
     "mtcp")
-        ./NPmtcp -p 0 -C 0 -l 1 -u 9000 -P 80 "${arg}"
+        ./NPmtcp -p 0 -C 0 -l 1 -u 9000 -P 80 $(args)
         ;;
     "cygnus")
         ./LD_LIBRARY_PATH=/home/yihan/cygnus/Cygnus:/home/yihan/cygnus/mthread:/home/yihan/Hoard \
-        ./NPcygnus -p 0 -C 0 -l 1 -u 8192 -P 80 "${arg}"
+        ./NPcygnus -p 0 -C 0 -l 1 -u 8192 -P 80 $(args)
         ;;
     *)
         echo "Wrong test!"
