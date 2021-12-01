@@ -5,7 +5,7 @@ role=$2
 if [ $role == 'client' ]
 then
     args="-h 10.0.0.1 -o $1.txt"
-    echo args
+    echo "${args}"
 fi
 
 # case $1 in
