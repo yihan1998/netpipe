@@ -135,6 +135,7 @@ int main(int argc, char **argv)
                       if (sched_setaffinity(0, sizeof(mask), &mask) < 0) {
                         perror("sched_setaffinity");
                       }
+                      printf("Bind to core %d\n\n", core);
 
             case 'B': if(integCheck == 1) {
                         fprintf(stderr, "Integrity check not supported with prepost burst\n");
@@ -179,8 +180,10 @@ int main(int argc, char **argv)
                         exit(0);
                       }
                       break;
+                      printf("Start from %d bytes\n\n", start);
 
             case 'u': end = atoi(optarg);
+                      printf("End until %d bytes\n\n", end);
                       break;
 
 #if defined(TCP) && ! defined(INFINIBAND) && !defined(OPENIB)
@@ -357,9 +360,11 @@ int main(int argc, char **argv)
 #endif
 	    case 'P': 
 		      args.port = atoi(optarg);
+          printf("Bind to port: %d\n\n", args.port);
 		      break;
 
             case 'n': nrepeat_const = atoi(optarg);
+                      printf("Repeat %d times\n\n", nrepeat_const);
                       break;
 
 #if defined(TCP) && ! defined(INFINIBAND) && !defined(OPENIB)
