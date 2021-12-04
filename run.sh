@@ -16,7 +16,7 @@ case $1 in
         ;;
     "cygnus")
         ./LD_LIBRARY_PATH=/home/yihan/cygnus/Cygnus:/home/yihan/cygnus/mthread:/home/yihan/Hoard \
-        ./NPcygnus -p 0 -C 0 -l 1 -u 8192 -P 80 -n 1024 "${args}"
+        ./NPcygnus --perturbation 0 --start 1 --end 8192 --port 80 --repeat 1024 --host 10.0.0.1 --output cygnus.txt
         ;;
     *)
         echo "Wrong test!"
