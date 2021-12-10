@@ -941,7 +941,8 @@ void * netpipe_main(void * arg) {
         * Main loop of benchmark *
         **************************/
 
-    if( args.tr ) fprintf(stderr,"Now starting the main loop\n");
+    // if( args.tr ) fprintf(stderr,"Now starting the main loop\n");
+    fprintf(stderr,"Now starting the main loop\n");
 
     for ( n = 0, len = start, errFlag = 0; 
             n < NSAMP - 3 && tlast < STOPTM && len <= end && !errFlag; 

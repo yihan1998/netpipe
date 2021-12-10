@@ -15,8 +15,9 @@ case $1 in
         ./NPmtcp -p 0 -C 0 -l 1 -u 9000 -P 80 -n 1024 "${args}"
         ;;
     "cygnus")
-        ./LD_LIBRARY_PATH=/home/yihan/cygnus/Cygnus:/home/yihan/cygnus/mthread:/home/yihan/Hoard \
-        ./NPcygnus --perturbation 0 --start 1 --end 8192 --port 80 --repeat 1024 --host 10.0.0.1 --output cygnus.txt
+        LD_LIBRARY_PATH=/home/yihan/cygnus/Cygnus:/home/yihan/cygnus/mthread:/home/yihan/Hoard \
+        ./NPcygnus  --perturbation=0 --start=1 --end=32768 --port=80 --repeat=1024 --host=10.0.0.1 --output=cygnus.txt \
+                    --num_cores=1 --test_time=120 --config_path=/home/yihan/cygnus/test/config
         ;;
     *)
         echo "Wrong test!"
