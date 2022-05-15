@@ -1580,6 +1580,10 @@ int netpipe_test(void * arg) {
     
     sail_init();
     
+    mthread_attr_t attr;
+    attr.__data.schedpolicy = MTHREAD_LOCAL;
+    attr.__data.flags = 0x0;
+
     /* Create polling thread */
     if((ret = mthread_create(&mid, NULL, netpipe_main, arg)) < 0) {
         fprintf(stdout, "mthread_create() error: %d\n", ret);
