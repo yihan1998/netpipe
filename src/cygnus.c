@@ -77,7 +77,7 @@ void Setup(ArgStruct *p) {
 
         p->servicefd = sockfd;
 
-        cygnus_create_flow(0, 0, 0, 0, 0, 0, p->port, 0xffff);
+        cygnus_create_flow("TCP", 0, 0, 0, 0, 0, 0, p->port, 0xffff);
     }
 
     p->upper = send_size + recv_size;
@@ -94,7 +94,7 @@ void establish(ArgStruct *p) {
     clen = (socklen_t) sizeof(p->prot.sin2);
 
     if( p->tr ){
-        cygnus_create_flow(0, 0, 0, 0, p->port, 0xf000, (lcore_id - 1) << 12, 0xf000);
+        cygnus_create_flow("TCP", 0, 0, 0, 0, p->port, 0xf000, (lcore_id - 1) << 12, 0xf000);
 
         while(cygnus_connect(p->commfd, (struct sockaddr *) &(p->prot.sin1), sizeof(p->prot.sin1)) < 0 && errno != EINPROGRESS) {
 
