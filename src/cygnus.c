@@ -74,7 +74,7 @@ void Setup(ArgStruct *p) {
 
         p->servicefd = sockfd;
 
-        cygnus_create_flow("TCP", 0, 0, 0, 0, 0, 0, p->port, 0xffff);
+        // cygnus_create_flow("TCP", 0, 0, 0, 0, 0, 0, p->port, 0xffff);
     }
 
     p->upper = send_size + recv_size;
