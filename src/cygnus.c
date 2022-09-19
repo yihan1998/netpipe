@@ -1,9 +1,6 @@
 #include    "netpipe.h"
 
 #include "cygnus.h"
-#include "cygnus_api.h"
-
-#include "mthread.h"
 
 int doing_reset = 0;
 
@@ -70,7 +67,7 @@ void Setup(ArgStruct *p) {
         lsin1->sin_addr.s_addr = htonl(INADDR_ANY);
         lsin1->sin_port        = htons(p->port);
         
-        if (cygnus_bind(sockfd, (struct sockaddr *)lsin1, sizeof(*lsin1)) < 0){
+        if (bind(sockfd, (struct sockaddr *)lsin1, sizeof(*lsin1)) < 0){
             printf("NetPIPE: server: bind on local address failed! errno=%d", errno);
             exit(-6);
         }
@@ -96,7 +93,7 @@ void establish(ArgStruct *p) {
     if( p->tr ){
         cygnus_create_flow("TCP", 0, 0, 0, 0, p->port, 0xf000, (lcore_id - 1) << 12, 0xf000);
 
-        while(cygnus_connect(p->commfd, (struct sockaddr *) &(p->prot.sin1), sizeof(p->prot.sin1)) < 0 && errno != EINPROGRESS) {
+        while(connect(p->commfd, (struct sockaddr *) &(p->prot.sin1), sizeof(p->prot.sin1)) < 0 && errno != EINPROGRESS) {
 
             /* If we are doing a reset and we get a connection refused from
             * the connect() call, assume that the other node has not yet
@@ -113,8 +110,8 @@ void establish(ArgStruct *p) {
     } else if( p->rcv ) {
 
         /* SERVER */
-        cygnus_listen(p->servicefd, 5);
-        p->commfd = cygnus_accept(p->servicefd, (struct sockaddr *) &(p->prot.sin2), &clen);
+        listen(p->servicefd, 5);
+        p->commfd = accept(p->servicefd, (struct sockaddr *) &(p->prot.sin2), &clen);
 
         if(p->commfd < 0){
             printf("Server: Accept Failed! errno=%d\n",errno);
@@ -134,16 +131,16 @@ void CleanUp2(ArgStruct *p) {
 
     if (p->tr) {
 
-        cygnus_write(p->commfd, quit, 5);
-        cygnus_read(p->commfd, quit, 5);
-        cygnus_close(p->commfd);
+        write(p->commfd, quit, 5);
+        read(p->commfd, quit, 5);
+        close(p->commfd);
 
     } else if( p->rcv ) {
 
-        cygnus_read(p->commfd, quit, 5);
-        cygnus_write(p->commfd, quit, 5);
-        cygnus_close(p->commfd);
-        cygnus_close(p->servicefd);
+        read(p->commfd, quit, 5);
+        write(p->commfd, quit, 5);
+        close(p->commfd);
+        close(p->servicefd);
 
     }
 }
@@ -182,7 +179,7 @@ static int readFully(int fd, void *obuf, int len) {
     char *buf = (char *) obuf;
     int bytesRead = 0;
 
-    while (bytesLeft > 0 && (bytesRead = cygnus_read(fd, (void *) buf, bytesLeft)) > 0) {
+    while (bytesLeft > 0 && (bytesRead = read(fd, (void *) buf, bytesLeft)) > 0) {
         bytesLeft -= bytesRead;
         buf += bytesRead;
     }
@@ -193,7 +190,7 @@ static int readFully(int fd, void *obuf, int len) {
 void Sync(ArgStruct *p) {
     char s[] = "SyncMe", response[] = "      ";
 
-    if (cygnus_write(p->commfd, s, strlen(s)) < 0 || readFully(p->commfd, response, strlen(s)) < 0) {
+    if (write(p->commfd, s, strlen(s)) < 0 || readFully(p->commfd, response, strlen(s)) < 0) {
         perror("NetPIPE: error writing or reading synchronization string");
         exit(3);
     }
@@ -237,7 +234,7 @@ void RecvData(ArgStruct *p) {
     bytesLeft = p->bufflen;
     bytesRead = 0;
     q = p->r_ptr;
-    while (bytesLeft > 0 && (bytesRead = cygnus_read(p->commfd, q, bytesLeft)) > 0) {
+    while (bytesLeft > 0 && (bytesRead = read(p->commfd, q, bytesLeft)) > 0) {
         bytesLeft -= bytesRead;
         q += bytesRead;
     }
@@ -265,7 +262,7 @@ void SendTime(ArgStruct *p, double *t) {
 
     /* Send time in network order */
     ntime = htonl(ltime);
-    if (cygnus_write(p->commfd, (char *)&ntime, sizeof(uint32_t)) < 0) {
+    if (write(p->commfd, (char *)&ntime, sizeof(uint32_t)) < 0) {
         printf("NetPIPE: write failed in SendTime: errno=%d\n", errno);
         exit(301);
     }
@@ -297,7 +294,7 @@ void SendRepeat(ArgStruct *p, int rpt) {
     lrpt = rpt;
     /* Send repeat count as a long in network order */
     nrpt = htonl(lrpt);
-    if (cygnus_write(p->commfd, (void *) &nrpt, sizeof(uint32_t)) < 0) {
+    if (write(p->commfd, (void *) &nrpt, sizeof(uint32_t)) < 0) {
         printf("NetPIPE: write failed in SendRepeat: errno=%d\n", errno);
         exit(304);
     }
@@ -356,11 +353,9 @@ static struct option opts[] = {
     {0,0,0,0}
 };
 
-void * netpipe_main(void * arg) {
-    struct cygnus_param * param = (struct cygnus_param *)arg;
-
-    int argc = param->argc;
-    char ** argv = param->argv;
+int main(int argc, char **argv)
+{
+    cygnus_start();
 
     FILE        *out;           /* Output data file                          */
     char        s[255],s2[255],delim[255],*pstr; /* Generic strings          */
@@ -381,6 +376,7 @@ void * netpipe_main(void * arg) {
                 len,            /* Number of bytes to be transmitted         */
                 inc=0,          /* Increment value                           */
                 perturbation=DEFPERT, /* Perturbation value                  */
+                core=0,         /* On core 0 by default */
                 pert,
                 start= 1,       /* Starting value for signature curve        */
                 end=MAXINT,     /* Ending value for signature curve          */
@@ -394,15 +390,13 @@ void * netpipe_main(void * arg) {
                 tlast,          /* Time for the last transmission            */
                 latency;        /* Network message latency                   */
 
-    // Data        bwdata[NSAMP];  /* Bandwidth curve data                      */
-    Data        * bwdata = (Data *)calloc(NSAMP, sizeof(Data));  /* Bandwidth curve data                      */
+    Data        bwdata[NSAMP];  /* Bandwidth curve data                      */
 
     int         integCheck=0;   /* Integrity check                           */
 
     /* Initialize vars that may change from default due to arguments */
 
-    char output[10] = "np.out";
-    stpncpy(s, output, strlen(output));   /* Default output file */
+    strcpy(s, "np.out");   /* Default output file */
 
     /* Let modules initialize related vars, and possibly call a library init
        function that requires argc and argv */
@@ -430,337 +424,293 @@ void * netpipe_main(void * arg) {
 #if ! defined(TCGMSG)
 
     /* Parse the arguments. See Usage for description */
-    optind = 1;
-    for (int i = 0; i < argc; i++) {
-        printf(" argc[%d]: %s\n", i, argv[i]);
-    }
-#if 0    
-    while ((c = getopt(argc, argv, "AXSO:rIiszgfaB2h:p:o:l:u:b:m:n:t:c:d:D:P:")) != -1) {
-        switch(c) {
-	        case 'A':   args.use_sdp=1;
-		                break;
-            case 'O':   strcpy(s2,optarg);
-                        strcpy(delim,",");
-                        if((pstr=strtok(s2,delim))!=NULL) {
-                            args.soffset=atoi(pstr);
-                            if((pstr=strtok((char *)NULL,delim))!=NULL)
+    while ((c = getopt(argc, argv, "AXSO:rIiszgfaB2h:p:o:l:u:b:m:n:t:c:d:D:P:C:")) != -1)
+    {
+        switch(c)
+        {
+	    case 'A':
+		      args.use_sdp=1;
+		      break;
+            case 'O':
+                      strcpy(s2,optarg);
+                      strcpy(delim,",");
+                      if((pstr=strtok(s2,delim))!=NULL) {
+                         args.soffset=atoi(pstr);
+                         if((pstr=strtok((char *)NULL,delim))!=NULL)
                             args.roffset=atoi(pstr);
-                            else /* only got one token */
+                         else /* only got one token */
                             args.roffset=args.soffset;
-                        } else {
-                            args.soffset=0; args.roffset=0;
-                        }
-                        printf("Transmit buffer offset: %d\nReceive buffer offset: %d\n",args.soffset,args.roffset);
-                        break;
-            case 'p':   perturbation = atoi(optarg);
-                        if( perturbation > 0 ) {
-                            printf("Using a perturbation value of %d\n\n", perturbation);
-                        } else {
-                            perturbation = 0;
-                            printf("Using no perturbations\n\n");
-                        }
-                        break;
+                      } else {
+                         args.soffset=0; args.roffset=0;
+                      }
+                      printf("Transmit buffer offset: %d\nReceive buffer offset: %d\n",args.soffset,args.roffset);
+                      break;
+            case 'p': perturbation = atoi(optarg);
+                      if( perturbation > 0 ) {
+                         printf("Using a perturbation value of %d\n\n", perturbation);
+                      } else {
+                         perturbation = 0;
+                         printf("Using no perturbations\n\n");
+                      }
+                      break;
+            
+            case 'C': core = atoi(optarg);
+                      cpu_set_t mask; 
+                      CPU_ZERO(&mask);
+                      CPU_SET(core, &mask); 
+                      if (sched_setaffinity(0, sizeof(mask), &mask) < 0) {
+                        perror("sched_setaffinity");
+                      }
+                      printf("Bind to core %d\n\n", core);
 
-            case 'B':   if(integCheck == 1) {
-                            fprintf(stderr, "Integrity check not supported with prepost burst\n");
-                            exit(-1);
-                        }
-                        args.preburst = 1;
-                        asyncReceive = 1;
-                        printf("Preposting all receives before a timed run.\n");
-                        printf("Some would consider this cheating,\n");
-                        printf("but it is needed to match some vendor tests.\n"); fflush(stdout);
-                        break;
+            case 'B': if(integCheck == 1) {
+                        fprintf(stderr, "Integrity check not supported with prepost burst\n");
+                        exit(-1);
+                      }
+                      args.preburst = 1;
+                      asyncReceive = 1;
+                      printf("Preposting all receives before a timed run.\n");
+                      printf("Some would consider this cheating,\n");
+                      printf("but it is needed to match some vendor tests.\n"); fflush(stdout);
+                      break;
 
-            case 'I':   args.cache = 0;
-                        printf("Performance measured without cache effects\n\n"); fflush(stdout);
-                        break;
+            case 'I': args.cache = 0;
+                      printf("Performance measured without cache effects\n\n"); fflush(stdout);
+                      break;
 
-            case 'o':   strcpy(s,optarg);
-                        printf("Sending output to %s\n", s); fflush(stdout);
-                        break;
+            case 'o': strcpy(s,optarg);
+                      printf("Sending output to %s\n", s); fflush(stdout);
+                      break;
 
-            case 's':   streamopt = 1;
-                        printf("Streaming in one direction only.\n\n");
+            case 's': streamopt = 1;
+                      printf("Streaming in one direction only.\n\n");
 #if defined(TCP) && ! defined(INFINIBAND) && !defined(OPENIB)
-                        printf("Sockets are reset between trials to avoid\n");
-                        printf("degradation from a collapsing window size.\n\n");
+                      printf("Sockets are reset between trials to avoid\n");
+                      printf("degradation from a collapsing window size.\n\n");
 #endif
-                        args.reset_conn = 1;
-                        printf("Streaming does not provide an accurate\n");
-                        printf("measurement of the latency since small\n");
-                        printf("messages may get bundled together.\n\n");
-                        if( args.bidir == 1 ) {
-                            printf("You can't use -s and -2 together\n");
-                            exit(0);
-                        }
-                        fflush(stdout);
-                        break;
+                      args.reset_conn = 1;
+                      printf("Streaming does not provide an accurate\n");
+                      printf("measurement of the latency since small\n");
+                      printf("messages may get bundled together.\n\n");
+                      if( args.bidir == 1 ) {
+                        printf("You can't use -s and -2 together\n");
+                        exit(0);
+                      }
+                      fflush(stdout);
+                      break;
 
-            case 'l':   printf(" >> start with: %s Bytes\n", optarg);
-                        start = atoi(optarg);
-                        if (start < 1) {
-                            fprintf(stderr,"Need a starting value >= 1\n");
-                            exit(0);
-                        }
-                        break;
+            case 'l': start = atoi(optarg);
+                      if (start < 1)
+                      {
+                        fprintf(stderr,"Need a starting value >= 1\n");
+                        exit(0);
+                      }
+                      printf("Start from %d bytes\n\n", start);
+                      break;
 
-            case 'u':   printf(" >> end with: %s Bytes\n", optarg);
-                        end = atoi(optarg);
-                        break;
+            case 'u': end = atoi(optarg);
+                      printf("End until %d bytes\n\n", end);
+                      break;
 
 #if defined(TCP) && ! defined(INFINIBAND) && !defined(OPENIB)
-            case 'b':   /* -b # resets the buffer size, -b 0 keeps system defs */
-                        args.prot.sndbufsz = args.prot.rcvbufsz = atoi(optarg);
-                        break;
+            case 'b': /* -b # resets the buffer size, -b 0 keeps system defs */
+                      args.prot.sndbufsz = args.prot.rcvbufsz = atoi(optarg);
+                      break;
 #endif
 
-            case '2':   args.bidir = 1;    /* Both procs are transmitters */
-                        /* end will be maxed at sndbufsz+rcvbufsz */
-                        printf("Passing data in both directions simultaneously.\n");
-                        printf("Output is for the combined bandwidth.\n");
+            case '2': args.bidir = 1;    /* Both procs are transmitters */
+                         /* end will be maxed at sndbufsz+rcvbufsz */
+                      printf("Passing data in both directions simultaneously.\n");
+                      printf("Output is for the combined bandwidth.\n");
 #if defined(TCP) && ! defined(INFINIBAND) && !defined(OPENIB)
-                        printf("The socket buffer size limits the maximum test size.\n\n");
+                      printf("The socket buffer size limits the maximum test size.\n\n");
 #endif
-                        if( streamopt ) {
-                            printf("You can't use -s and -2 together\n");
-                            exit(0);
-                        }
-                        break;
+                      if( streamopt ) {
+                        printf("You can't use -s and -2 together\n");
+                        exit(0);
+                      }
+                      break;
 
-            case 'h':   args.tr = 1;       /* -h implies transmit node */
-                        args.rcv = 0;
-                        args.host = (char *)malloc(strlen(optarg)+1);
-                        strcpy(args.host, optarg);
-                        break;
+            case 'h': args.tr = 1;       /* -h implies transmit node */
+                      args.rcv = 0;
+                      args.host = (char *)malloc(strlen(optarg)+1);
+                      strcpy(args.host, optarg);
+                      break;
 
 #ifdef DISK
-            case 'd':   args.tr = 1;      /* -d to specify input/output file */
-                        args.rcv = 0;
-                        args.prot.read = 0;
-                        args.prot.read_type = 'c';
-                        args.prot.dfile_name = (char *)malloc(strlen(optarg)+1);
-                        strcpy(args.prot.dfile_name, optarg);
-                        break;
+            case 'd': args.tr = 1;      /* -d to specify input/output file */
+                      args.rcv = 0;
+                      args.prot.read = 0;
+                      args.prot.read_type = 'c';
+                      args.prot.dfile_name = (char *)malloc(strlen(optarg)+1);
+                      strcpy(args.prot.dfile_name, optarg);
+                      break;
 
-            case 'D':   if( optarg[0] == 'r' )
-                            args.prot.read = 1;
-                        else
-                            args.prot.read = 0;
-                        args.prot.read_type = optarg[1];
-                        break;
+            case 'D': if( optarg[0] == 'r' )
+                         args.prot.read = 1;
+                      else
+                         args.prot.read = 0;
+                      args.prot.read_type = optarg[1];
+                      break;
 #endif
 
-            case 'i':   if(args.preburst == 1) {
-                            fprintf(stderr, "Integrity check not supported with prepost burst\n");
-                            exit(-1);
-                        }
-                        integCheck = 1;
-                        perturbation = 0;
-                        start = sizeof(int)+1; /* Start with integer size */
-                        printf("Doing an integrity check instead of measuring performance\n"); fflush(stdout);
-                        break;
+            case 'i': if(args.preburst == 1) {
+                        fprintf(stderr, "Integrity check not supported with prepost burst\n");
+                        exit(-1);
+                      }
+                      integCheck = 1;
+                      perturbation = 0;
+                      start = sizeof(int)+1; /* Start with integer size */
+                      printf("Doing an integrity check instead of measuring performance\n"); fflush(stdout);
+                      break;
 
 #if defined(MPI)
-            case 'z':   args.source_node = -1;
-                        printf("Receive using the ANY_SOURCE flag\n"); fflush(stdout);
-                        break;
+            case 'z': args.source_node = -1;
+                      printf("Receive using the ANY_SOURCE flag\n"); fflush(stdout);
+                      break;
 
-            case 'a':   asyncReceive = 1;
-                        printf("Preposting asynchronous receives\n"); fflush(stdout);
-                        break;
+            case 'a': asyncReceive = 1;
+                      printf("Preposting asynchronous receives\n"); fflush(stdout);
+                      break;
 
-            case 'S':   args.syncflag=1;
-                        fprintf(stderr,"Using synchronous sends\n");
-                        break;
+            case 'S': args.syncflag=1;
+                      fprintf(stderr,"Using synchronous sends\n");
+                      break;
 #endif
 #if defined(MPI2)
-            case 'g':   if(args.prot.no_fence == 1) {
-                            fprintf(stderr, "-f cannot be used with -g\n");
-                            exit(-1);
-                        } 
-                        args.prot.use_get = 1;
-                        printf("Using MPI-2 Get instead of Put\n");
-                        break;
+            case 'g': if(args.prot.no_fence == 1) {
+                        fprintf(stderr, "-f cannot be used with -g\n");
+                        exit(-1);
+                      } 
+                      args.prot.use_get = 1;
+                      printf("Using MPI-2 Get instead of Put\n");
+                      break;
 
-            case 'f':   if(args.prot.use_get == 1) {
-                            fprintf(stderr, "-f cannot be used with -g\n");
-                            exit(-1);
-                        }
-                        args.prot.no_fence = 1;
-                        bufalign = 0;
-                        printf("Buffer alignment off (Required for no fence)\n");
-                        break;
+            case 'f': if(args.prot.use_get == 1) {
+                         fprintf(stderr, "-f cannot be used with -g\n");
+                         exit(-1);
+                      }
+                      args.prot.no_fence = 1;
+                      bufalign = 0;
+                      printf("Buffer alignment off (Required for no fence)\n");
+                      break;
 #endif /* MPI2 */
 
 #if defined(INFINIBAND)
-            case 'm':   switch(atoi(optarg)) {
-                            case 256: args.prot.ib_mtu = MTU256;
-                            break;
-                            case 512: args.prot.ib_mtu = MTU512;
-                            break;
-                            case 1024: args.prot.ib_mtu = MTU1024;
-                            break;
-                            case 2048: args.prot.ib_mtu = MTU2048;
-                            break;
-                            case 4096: args.prot.ib_mtu = MTU4096;
-                            break;
-                            default: 
-                            fprintf(stderr, "Invalid MTU size, must be one of "
-                                            "256, 512, 1024, 2048, 4096\n");
-                            exit(-1);
-                        }
-                        break;
+            case 'm': switch(atoi(optarg)) {
+                        case 256: args.prot.ib_mtu = MTU256;
+                          break;
+                        case 512: args.prot.ib_mtu = MTU512;
+                          break;
+                        case 1024: args.prot.ib_mtu = MTU1024;
+                          break;
+                        case 2048: args.prot.ib_mtu = MTU2048;
+                          break;
+                        case 4096: args.prot.ib_mtu = MTU4096;
+                          break;
+                        default: 
+                          fprintf(stderr, "Invalid MTU size, must be one of "
+                                          "256, 512, 1024, 2048, 4096\n");
+                          exit(-1);
+                      }
+                      break;
 #endif
 
 #if defined(OPENIB)
-            case 'm':   switch(atoi(optarg)) {
-                            case 256: args.prot.ib_mtu = IBV_MTU_256;
-                            break;
-                            case 512: args.prot.ib_mtu = IBV_MTU_512;
-                            break;
-                            case 1024: args.prot.ib_mtu = IBV_MTU_1024;
-                            break;
-                            case 2048: args.prot.ib_mtu = IBV_MTU_2048;
-                            break;
-                            case 4096: args.prot.ib_mtu = IBV_MTU_4096;
-                            break;
-                            default: 
-                            fprintf(stderr, "Invalid MTU size, must be one of "
-                                            "256, 512, 1024, 2048, 4096\n");
-                            exit(-1);
-                        }
-                        break;
+            case 'm': switch(atoi(optarg)) {
+                        case 256: args.prot.ib_mtu = IBV_MTU_256;
+                          break;
+                        case 512: args.prot.ib_mtu = IBV_MTU_512;
+                          break;
+                        case 1024: args.prot.ib_mtu = IBV_MTU_1024;
+                          break;
+                        case 2048: args.prot.ib_mtu = IBV_MTU_2048;
+                          break;
+                        case 4096: args.prot.ib_mtu = IBV_MTU_4096;
+                          break;
+                        default: 
+                          fprintf(stderr, "Invalid MTU size, must be one of "
+                                          "256, 512, 1024, 2048, 4096\n");
+                          exit(-1);
+                      }
+                      break;
 #endif
 
 #if defined(OPENIB)
-            case 'D':   args.prot.device_and_port = strdup(optarg);
-                        break;
+            case 'D': args.prot.device_and_port = strdup(optarg);
+                      break;
 #endif
 
 #if defined(OPENIB) || defined(INFINIBAND)
-            case 't':   if( !strcmp(optarg, "send_recv") ) {
-                            printf("Using Send/Receive communications\n");
-                            args.prot.commtype = NP_COMM_SENDRECV;
-                        } else if( !strcmp(optarg, "send_recv_with_imm") ) {
-                            printf("Using Send/Receive communications with immediate data\n");
-                            args.prot.commtype = NP_COMM_SENDRECV_WITH_IMM;
-                        } else if( !strcmp(optarg, "rdma_write") ) {
-                            printf("Using RDMA Write communications\n");
-                            args.prot.commtype = NP_COMM_RDMAWRITE;
-                        } else if( !strcmp(optarg, "rdma_write_with_imm") ) {
-                            printf("Using RDMA Write communications with immediate data\n");
-                            args.prot.commtype = NP_COMM_RDMAWRITE_WITH_IMM;
-                        } else {
-                            fprintf(stderr, "Invalid transfer type "
-                                    "specified, please choose one of:\n\n"
-                                    "\tsend_recv\t\tUse Send/Receive communications\t(default)\n"
-                                    "\tsend_recv_with_imm\tSame as above with immediate data\n"
-                                    "\trdma_write\t\tUse RDMA Write communications\n"
-                                    "\trdma_write_with_imm\tSame as above with immediate data\n\n");
-                            exit(-1);
-                        }
-                        break;
+            case 't': if( !strcmp(optarg, "send_recv") ) {
+                         printf("Using Send/Receive communications\n");
+                         args.prot.commtype = NP_COMM_SENDRECV;
+                      } else if( !strcmp(optarg, "send_recv_with_imm") ) {
+                         printf("Using Send/Receive communications with immediate data\n");
+                         args.prot.commtype = NP_COMM_SENDRECV_WITH_IMM;
+                      } else if( !strcmp(optarg, "rdma_write") ) {
+                         printf("Using RDMA Write communications\n");
+                         args.prot.commtype = NP_COMM_RDMAWRITE;
+                      } else if( !strcmp(optarg, "rdma_write_with_imm") ) {
+                         printf("Using RDMA Write communications with immediate data\n");
+                         args.prot.commtype = NP_COMM_RDMAWRITE_WITH_IMM;
+                      } else {
+                         fprintf(stderr, "Invalid transfer type "
+                                 "specified, please choose one of:\n\n"
+                                 "\tsend_recv\t\tUse Send/Receive communications\t(default)\n"
+                                 "\tsend_recv_with_imm\tSame as above with immediate data\n"
+                                 "\trdma_write\t\tUse RDMA Write communications\n"
+                                 "\trdma_write_with_imm\tSame as above with immediate data\n\n");
+                         exit(-1);
+                      }
+                      break;
 
-            case 'c':   if( !strcmp(optarg, "local_poll") ) {
-                            printf("Using local polling completion\n");
-                            args.prot.comptype = NP_COMP_LOCALPOLL;
-                        } else if( !strcmp(optarg, "vapi_poll") ) {
-                            printf("Using VAPI polling completion\n");
-                            args.prot.comptype = NP_COMP_VAPIPOLL;
-                        } else if( !strcmp(optarg, "event") ) {
-                            printf("Using VAPI event completion\n");
-                            args.prot.comptype = NP_COMP_EVENT;
-                        } else {
-                            fprintf(stderr, "Invalid completion type specified, "
-                                    "please choose one of:\n\n"
-                                    "\tlocal_poll\tWait for last byte of data\t(default)\n"
-                                    "\tvapi_poll\tUse VAPI polling function\n"
-                                    "\tevent\t\tUse VAPI event handling function\n\n");
-                            exit(-1);
-                        }
-                        break;
+            case 'c': if( !strcmp(optarg, "local_poll") ) {
+                         printf("Using local polling completion\n");
+                         args.prot.comptype = NP_COMP_LOCALPOLL;
+                      } else if( !strcmp(optarg, "vapi_poll") ) {
+                         printf("Using VAPI polling completion\n");
+                         args.prot.comptype = NP_COMP_VAPIPOLL;
+                      } else if( !strcmp(optarg, "event") ) {
+                         printf("Using VAPI event completion\n");
+                         args.prot.comptype = NP_COMP_EVENT;
+                      } else {
+                         fprintf(stderr, "Invalid completion type specified, "
+                                 "please choose one of:\n\n"
+                                 "\tlocal_poll\tWait for last byte of data\t(default)\n"
+                                 "\tvapi_poll\tUse VAPI polling function\n"
+                                 "\tevent\t\tUse VAPI event handling function\n\n");
+                         exit(-1);
+                      }
+                      break;
 #endif
-	        case 'P':   printf(" >> port: %s\n", optarg);
-                        args.port = atoi(optarg);
-		                break;
+	    case 'P': 
+		      args.port = atoi(optarg);
+          printf("Bind to port: %d\n\n", args.port);
+		      break;
 
-            case 'n':   printf(" >> repeat for %s\n", optarg);
-                        nrepeat_const = atoi(optarg);
-                        break;
+            case 'n': nrepeat_const = atoi(optarg);
+                      printf("Repeat %d times\n\n", nrepeat_const);
+                      break;
 
 #if defined(TCP) && ! defined(INFINIBAND) && !defined(OPENIB)
-            case 'r':   args.reset_conn = 1;
-                        printf("Resetting connection after every trial\n");
-                        break;
+            case 'r': args.reset_conn = 1;
+                      printf("Resetting connection after every trial\n");
+                      break;
 #endif
-	        case 'X':   debug_wait = 1;
-                        printf("Enableing debug wait!\n");
-                        printf("Attach to pid %d and set debug_wait to 0 to conttinue\n", getpid());
-                        break;
+	    case 'X': debug_wait = 1;
+		      printf("Enableing debug wait!\n");
+		      printf("Attach to pid %d and set debug_wait to 0 to conttinue\n", getpid());
+		      break;
 
-            // default:    PrintUsage(); 
-            //             exit(-12);
-            default:    break; 
-        }
-    }
-#endif
-    while ((c = getopt_long(argc, argv, "", opts, NULL)) != -1) {
-        switch(c) {
-            case PERTURBATION:
-                        perturbation = atoi(optarg);
-                        if( perturbation > 0 ) {
-                            printf("Using a perturbation value of %d\n\n", perturbation);
-                        } else {
-                            perturbation = 0;
-                            printf("Using no perturbations\n\n");
-                        }
-                        break;
+            default: 
+                     PrintUsage(); 
+                     exit(-12);
+       }
+   }
 
-            case OUTPUT:   
-                        strcpy(s,optarg);
-                        printf("Sending output to %s\n", s); fflush(stdout);
-                        break;
-
-            case START:   
-                        printf(" >> start with: %s Bytes\n", optarg);
-                        start = atoi(optarg);
-                        if (start < 1) {
-                            fprintf(stderr,"Need a starting value >= 1\n");
-                            exit(0);
-                        }
-                        break;
-
-            case END:   
-                        printf(" >> end with: %s Bytes\n", optarg);
-                        end = atoi(optarg);
-                        break;
-
-            case HOST:   
-                        args.tr = 1;       /* -h implies transmit node */
-                        args.rcv = 0;
-                        args.host = (char *)malloc(strlen(optarg)+1);
-                        strcpy(args.host, optarg);
-                        break;
-
-	        case PORT:   
-                        printf(" >> port: %s\n", optarg);
-                        args.port = atoi(optarg);
-		                break;
-
-            case REPEAT:   
-                        printf(" >> repeat for %s\n", optarg);
-                        nrepeat_const = atoi(optarg);
-                        break;
-
-            // default:    PrintUsage(); 
-            //             exit(-12);
-            default:    break; 
-        }
-    }
-
-    while (debug_wait) {
-	    for(i=0;i<10000;i++){};
+   while(debug_wait){
+	   for(i=0;i<10000;i++){};
    	};
 #endif /* ! defined TCGMSG */
 
@@ -796,72 +746,71 @@ void * netpipe_main(void * arg) {
    }
 #endif
 
-    if (start > end) {
-        fprintf(stderr, "Start MUST be LESS than end\n");
-        exit(420132);
-    }
-    args.nbuff = TRIALS;
+   if (start > end)
+   {
+       fprintf(stderr, "Start MUST be LESS than end\n");
+       exit(420132);
+   }
+   args.nbuff = TRIALS;
 
-    Setup(&args);
+   Setup(&args);
 
-    if( args.bidir && end > args.upper ) {
-        end = args.upper;
-        if( args.tr ) {
-            printf("The upper limit is being set to %d Bytes\n", end);
+   if( args.bidir && end > args.upper ) {
+      end = args.upper;
+      if( args.tr ) {
+         printf("The upper limit is being set to %d Bytes\n", end);
 #if defined(TCP) && ! defined(INFINIBAND) && !defined(OPENIB)
-            printf("due to socket buffer size limitations\n\n");
+         printf("due to socket buffer size limitations\n\n");
 #endif
-        }  
-    }
+   }  }
 
 #if defined(GM)
 
-    if(streamopt && (!nrepeat_const || nrepeat_const > args.prot.num_stokens)) {
-        printf("\nGM is currently limited by the driver software to %d\n", 
-                args.prot.num_stokens);
-        printf("outstanding sends. The number of repeats will be set\n");
-        printf("to this limit for every trial in streaming mode.  You\n");
-        printf("may use the -n switch to set a smaller number of repeats\n\n");
+   if(streamopt && (!nrepeat_const || nrepeat_const > args.prot.num_stokens)) {
+     printf("\nGM is currently limited by the driver software to %d\n", 
+            args.prot.num_stokens);
+     printf("outstanding sends. The number of repeats will be set\n");
+     printf("to this limit for every trial in streaming mode.  You\n");
+     printf("may use the -n switch to set a smaller number of repeats\n\n");
 
-        nrepeat_const = args.prot.num_stokens;
-    }
+     nrepeat_const = args.prot.num_stokens;
+   }
 
 #endif
 
-    /* Primary transmitter */
-    if( args.tr ) {
-        if ((out = fopen(s, "w")) == NULL) {
-            fprintf(stderr,"Can't open %s for output\n", s);
-            exit(1);
-        }
-    } else {
-        out = stdout;
-    }
+   if( args.tr )                     /* Primary transmitter */
+   {
+       if ((out = fopen(s, "w")) == NULL)
+       {
+           fprintf(stderr,"Can't open %s for output\n", s);
+           exit(1);
+       }
+   }
+   else out = stdout;
 
-    /* Set a starting value for the message size increment. */
+      /* Set a starting value for the message size increment. */
 
-    inc = (start > 1) ? start / 2 : 1;
-    nq = (start > 1) ? 1 : 0;
+   inc = (start > 1) ? start / 2 : 1;
+   nq = (start > 1) ? 1 : 0;
 
-    /* Test the timing to set tlast for the first test */
+      /* Test the timing to set tlast for the first test */
 
-    args.bufflen = start;
-    MyMalloc(&args, args.bufflen, 0, 0);
-    InitBufferData(&args, args.bufflen, 0, 0);
+   args.bufflen = start;
+   MyMalloc(&args, args.bufflen, 0, 0);
+   InitBufferData(&args, args.bufflen, 0, 0);
 
-    if(args.cache) args.s_buff = args.r_buff;
-    
-    args.r_ptr = args.r_buff_orig = args.r_buff;
-    args.s_ptr = args.s_buff_orig = args.s_buff;
-        
-    AfterAlignmentInit(&args);  /* MPI-2 needs this to create a window */
+   if(args.cache) args.s_buff = args.r_buff;
+   
+   args.r_ptr = args.r_buff_orig = args.r_buff;
+   args.s_ptr = args.s_buff_orig = args.s_buff;
+      
+   AfterAlignmentInit(&args);  /* MPI-2 needs this to create a window */
 
-    /* Infiniband requires use of asynchronous communications, so we need
-        * the PrepareToReceive calls below
-        */
-    if( asyncReceive ) {
-        PrepareToReceive(&args);
-    }
+   /* Infiniband requires use of asynchronous communications, so we need
+    * the PrepareToReceive calls below
+    */
+   if( asyncReceive )
+      PrepareToReceive(&args);
    
     Sync(&args);    /* Sync to prevent race condition in armci module */
 
@@ -871,100 +820,101 @@ void * netpipe_main(void * arg) {
     * longer to send data in both directions at once than it does to send data
     * one way at a time, this shouldn't be too far off anyway.
     */
-    t0 = When();
-    for( n=0; n<100; n++) {
-        if( args.tr) {
-        SendData(&args);
-        RecvData(&args);
-        if( asyncReceive && n<99 )
-            PrepareToReceive(&args);
-        } else if( args.rcv) {
-        RecvData(&args);
-        if( asyncReceive && n<99 )
-            PrepareToReceive(&args);
-        SendData(&args);
-        }
-    }
-    tlast = (When() - t0)/200;
+   t0 = When();
+      for( n=0; n<100; n++) {
+         if( args.tr) {
+            SendData(&args);
+            RecvData(&args);
+            if( asyncReceive && n<99 )
+               PrepareToReceive(&args);
+         } else if( args.rcv) {
+            RecvData(&args);
+            if( asyncReceive && n<99 )
+               PrepareToReceive(&args);
+            SendData(&args);
+         }
+      }
+   tlast = (When() - t0)/200;
 
-    /* Sync up and Reset before freeing the buffers */
-    
-    Sync(&args);  ///////
-
-    Reset(&args);
+   /* Sync up and Reset before freeing the buffers */
    
-    /* Free the buffers and any other module-specific resources. */
-    if(args.cache)
-        FreeBuff(args.r_buff_orig, NULL);
-    else
-        FreeBuff(args.r_buff_orig, args.s_buff_orig);
+   Sync(&args);  ///////
 
-        /* Do setup for no-cache mode, using two distinct buffers. */
+   Reset(&args);
+   
+   /* Free the buffers and any other module-specific resources. */
+   if(args.cache)
+      FreeBuff(args.r_buff_orig, NULL);
+   else
+      FreeBuff(args.r_buff_orig, args.s_buff_orig);
 
-    if (!args.cache) {
+      /* Do setup for no-cache mode, using two distinct buffers. */
 
-        /* Allocate dummy pool of memory to flush cache with */
+   if (!args.cache)
+   {
 
-        if ( (memcache = (int *)malloc(MEMSIZE)) == NULL)
-        {
-            perror("malloc");
-            exit(1);
-        }
-        mymemset(memcache, 0, MEMSIZE/sizeof(int)); 
+       /* Allocate dummy pool of memory to flush cache with */
 
-        /* Allocate large memory pools */
+       if ( (memcache = (int *)malloc(MEMSIZE)) == NULL)
+       {
+           perror("malloc");
+           exit(1);
+       }
+       mymemset(memcache, 0, MEMSIZE/sizeof(int)); 
 
-        MyMalloc(&args, MEMSIZE+bufalign, args.soffset, args.roffset); 
+       /* Allocate large memory pools */
 
-        /* Save buffer addresses */
-        
-        args.s_buff_orig = args.s_buff;
-        args.r_buff_orig = args.r_buff;
+       MyMalloc(&args, MEMSIZE+bufalign, args.soffset, args.roffset); 
 
-        /* Align buffers */
-
-        args.s_buff = AlignBuffer(args.s_buff, bufalign);
-        args.r_buff = AlignBuffer(args.r_buff, bufalign);
-
-        /* Post alignment initialization */
-
-        AfterAlignmentInit(&args);
-
-        /* Initialize send buffer pointer */
+       /* Save buffer addresses */
        
-        /* both soffset and roffset should be zero if we don't have any offset stuff, so this should be fine */
-        args.s_ptr = args.s_buff+args.soffset;
-        args.r_ptr = args.r_buff+args.roffset;
-    }
+       args.s_buff_orig = args.s_buff;
+       args.r_buff_orig = args.r_buff;
 
-        /**************************
+       /* Align buffers */
+
+       args.s_buff = AlignBuffer(args.s_buff, bufalign);
+       args.r_buff = AlignBuffer(args.r_buff, bufalign);
+
+       /* Post alignment initialization */
+
+       AfterAlignmentInit(&args);
+
+       /* Initialize send buffer pointer */
+       
+/* both soffset and roffset should be zero if we don't have any offset stuff, so this should be fine */
+       args.s_ptr = args.s_buff+args.soffset;
+       args.r_ptr = args.r_buff+args.roffset;
+   }
+
+       /**************************
         * Main loop of benchmark *
         **************************/
 
-    // if( args.tr ) fprintf(stderr,"Now starting the main loop\n");
-    fprintf(stderr,"Now starting the main loop\n");
+   if( args.tr ) fprintf(stderr,"Now starting the main loop\n");
 
-    for ( n = 0, len = start, errFlag = 0; 
-            n < NSAMP - 3 && tlast < STOPTM && len <= end && !errFlag; 
-            len = len + inc, nq++ )
-    {
+   for ( n = 0, len = start, errFlag = 0; 
+        n < NSAMP - 3 && tlast < STOPTM && len <= end && !errFlag; 
+        len = len + inc, nq++ )
+   {
 
-        /* Exponentially increase the block size.  */
+           /* Exponentially increase the block size.  */
 
-        if (nq > 2) inc = ((nq % 2))? inc + inc: inc;
+       if (nq > 2) inc = ((nq % 2))? inc + inc: inc;
        
-        /* This is a perturbation loop to test nearby values */
+          /* This is a perturbation loop to test nearby values */
 
-        for (pert = ((perturbation > 0) && (inc > perturbation+1)) ? -perturbation : 0;
+       for (pert = ((perturbation > 0) && (inc > perturbation+1)) ? -perturbation : 0;
             pert <= perturbation; 
             n++, pert += ((perturbation > 0) && (inc > perturbation+1)) ? perturbation : perturbation+1)
-        {
+       {
 
-            Sync(&args);    /* Sync to prevent race condition in armci module */
+           Sync(&args);    /* Sync to prevent race condition in armci module */
 
-            /* Calculate how many times to repeat the experiment. */
+               /* Calculate how many times to repeat the experiment. */
 
-            if( args.tr ) {
+           if( args.tr )
+           {
                if (nrepeat_const) {
                    nrepeat = nrepeat_const;
 /*               } else if (len == start) {*/
@@ -974,19 +924,20 @@ void * netpipe_main(void * arg) {
                                   (args.bufflen - inc + 1.0) * tlast)),TRIALS);
                }
                SendRepeat(&args, nrepeat);
-           } else if( args.rcv ) {
+           }
+           else if( args.rcv )
+           {
                RecvRepeat(&args, &nrepeat);
            }
 
            args.bufflen = len + pert;
 
-           if( args.tr ) {
+           if( args.tr )
                fprintf(stderr,"%3d: %7d bytes %6d times --> ",
                        n,args.bufflen,nrepeat);
-           }
 
-           if (args.cache) {
-               /* Allow cache effects.  We use only one buffer */
+           if (args.cache) /* Allow cache effects.  We use only one buffer */
+           {
                /* Allocate the buffer with room for alignment*/
 
                MyMalloc(&args, args.bufflen+bufalign, args.soffset, args.roffset); 
@@ -1027,8 +978,9 @@ void * netpipe_main(void * arg) {
                args.r_ptr = args.r_buff+args.roffset;
                args.s_ptr = args.r_buff+args.soffset;
 
-           } else {
-               /* Eliminate cache effects.  We use two distinct buffers */
+           }
+           else /* Eliminate cache effects.  We use two distinct buffers */
+           {
 
                /* this isn't truly set up for offsets yet */
                /* Size of an aligned memory block including trailing padding */
@@ -1060,46 +1012,50 @@ void * netpipe_main(void * arg) {
              * section that are not in the receive section.
              */
 
-            if( args.tr || args.bidir ) {
+            if( args.tr || args.bidir )
+            {
                 /*
                    This is the transmitter: send the block TRIALS times, and
                    if we are not streaming, expect the receiver to return each
                    block.
                 */
 
-                for (i = 0; i < (integCheck ? 1 : TRIALS); i++) {                    
-                    if(args.preburst && asyncReceive && !streamopt) {
+                for (i = 0; i < (integCheck ? 1 : TRIALS); i++)
+                {                    
+                    if(args.preburst && asyncReceive && !streamopt)
+                    {
 
-                        /* We need to save the value of the recv ptr so
-                        * we can reset it after we do the preposts, in case
-                        * the module needs to use the same ptr values again
-                        * so it can wait on the last byte to change to indicate
-                        * the recv is finished.
-                        */
+                      /* We need to save the value of the recv ptr so
+                       * we can reset it after we do the preposts, in case
+                       * the module needs to use the same ptr values again
+                       * so it can wait on the last byte to change to indicate
+                       * the recv is finished.
+                       */
 
-                        SaveRecvPtr(&args);
+                      SaveRecvPtr(&args);
 
-                        for(j=0; j<nrepeat; j++) {
-                            PrepareToReceive(&args);
-                            if(!args.cache) {
-                                AdvanceRecvPtr(&args, len_buf_align);
-                            }
-                        }
+                      for(j=0; j<nrepeat; j++)
+                      {
+                        PrepareToReceive(&args);
+                        if(!args.cache)
+                          AdvanceRecvPtr(&args, len_buf_align);
+                      }
 
-                        ResetRecvPtr(&args);
+                      ResetRecvPtr(&args);
                     }
 
                     /* Flush the cache using the dummy buffer */
-                    if (!args.cache) {
-                        flushcache(memcache, MEMSIZE/sizeof(int));
-                    }
+                    if (!args.cache)
+                      flushcache(memcache, MEMSIZE/sizeof(int));
 
                     Sync(&args);
 
                     t0 = When();
 
-                    for (j = 0; j < nrepeat; j++) {
-                        if (!args.preburst && asyncReceive && !streamopt) {
+                    for (j = 0; j < nrepeat; j++)
+                    {
+                        if (!args.preburst && asyncReceive && !streamopt)
+                        {
                             PrepareToReceive(&args);
                         }
 
@@ -1107,23 +1063,23 @@ void * netpipe_main(void * arg) {
 
                         SendData(&args);
 
-                        if (!streamopt) {
+                        if (!streamopt)
+                        {
                             RecvData(&args);
 
                             if (integCheck) VerifyIntegrity(&args);
 
-                            if(!args.cache) {
-                                AdvanceRecvPtr(&args, len_buf_align);
-                            }
+                            if(!args.cache)
+                              AdvanceRecvPtr(&args, len_buf_align);
 
                         }
                         
                         /* Wait to advance send pointer in case RecvData uses
                          * it (e.g. memcpy module).
                          */
-                        if (!args.cache) {
-                            AdvanceSendPtr(&args, len_buf_align);
-                        }
+                        if (!args.cache)
+                          AdvanceSendPtr(&args, len_buf_align);
+
                     }
 
                        /* t is the 1-directional trasmission time */
@@ -1143,7 +1099,7 @@ void * netpipe_main(void * arg) {
 /*                    t2 += t*t;*/
                 }
 
-                if (streamopt) {  /* Get time info from Recv node */
+                if (streamopt){  /* Get time info from Recv node */
                     RecvTime(&args, &bwdata[n].t);
 /*                    RecvTime(&args, &t1);*/
 /*                    RecvTime(&args, &t2);*/
@@ -1153,69 +1109,78 @@ void * netpipe_main(void * arg) {
 
 /*                bwdata[n].variance = t2/TRIALS - t1/TRIALS * t1/TRIALS;*/
 
-            } else if( args.rcv ) {
+            }
+            else if( args.rcv )
+            {
                 /*
                    This is the receiver: receive the block TRIALS times, and
                    if we are not streaming, send the block back to the
                    sender.
                 */
-                for (i = 0; i < (integCheck ? 1 : TRIALS); i++) {
-                    if (asyncReceive) {
-                       if (args.preburst) {
+                for (i = 0; i < (integCheck ? 1 : TRIALS); i++)
+                {
+                    if (asyncReceive)
+                    {
+                       if (args.preburst)
+                       {
 
-                            /* We need to save the value of the recv ptr so
-                            * we can reset it after we do the preposts, in case
-                            * the module needs to use the same ptr values again
-                            * so it can wait on the last byte to change to 
-                            * indicate the recv is finished.
-                            */
+                         /* We need to save the value of the recv ptr so
+                          * we can reset it after we do the preposts, in case
+                          * the module needs to use the same ptr values again
+                          * so it can wait on the last byte to change to 
+                          * indicate the recv is finished.
+                          */
 
-                            SaveRecvPtr(&args);
+                         SaveRecvPtr(&args);
 
-                            for (j=0; j < nrepeat; j++) {
-                                PrepareToReceive(&args);
-                                if (!args.cache) {
-                                    AdvanceRecvPtr(&args, len_buf_align);
-                                }
+                         for (j=0; j < nrepeat; j++)
+                         {
+                              PrepareToReceive(&args);
+                              if (!args.cache)
+                                 AdvanceRecvPtr(&args, len_buf_align);
                          }
                          
                          ResetRecvPtr(&args);
                          
-                       } else {
+                       }
+                       else
+                       {
                            PrepareToReceive(&args);
                        }
                       
                     }
                     
                     /* Flush the cache using the dummy buffer */
-                    if (!args.cache) {
-                        flushcache(memcache, MEMSIZE/sizeof(int));
-                    }
+                    if (!args.cache)
+                      flushcache(memcache, MEMSIZE/sizeof(int));
 
                     Sync(&args);
 
                     t0 = When();
-                    for (j = 0; j < nrepeat; j++) {
+                    for (j = 0; j < nrepeat; j++)
+                    {
                         RecvData(&args);
 
                         if (integCheck) VerifyIntegrity(&args);
 
-                        if (!args.cache) { 
+                        if (!args.cache)
+                        { 
                             AdvanceRecvPtr(&args, len_buf_align);
                         }
                         
-                        if (!args.preburst && asyncReceive && (j < nrepeat-1)) {
+                        if (!args.preburst && asyncReceive && (j < nrepeat-1))
+                        {
                             PrepareToReceive(&args);
                         }
 
-                        if (!streamopt) {
+                        if (!streamopt)
+                        {
                             if (integCheck) SetIntegrityData(&args);
                             
                             SendData(&args);
 
-                            if(!args.cache) {
-                                AdvanceSendPtr(&args, len_buf_align);
-                            }
+                            if(!args.cache) 
+                              AdvanceSendPtr(&args, len_buf_align);
                         }
 
                     }
@@ -1229,16 +1194,16 @@ void * netpipe_main(void * arg) {
 /*                    t1 += t;*/
 /*                    t2 += t*t;*/
                 }
-
-                if (streamopt) {  
-                    /* Recv proc calcs time and sends to Trans */
+                if (streamopt){  /* Recv proc calcs time and sends to Trans */
                     SendTime(&args, &bwdata[n].t);
 /*                    SendTime(&args, &t1);*/
 /*                    SendTime(&args, &t2);*/
                 }
-            } else {
-                /* Just going along for the ride */
-                for (i = 0; i < (integCheck ? 1 : TRIALS); i++) {
+            }
+            else  /* Just going along for the ride */
+            {
+                for (i = 0; i < (integCheck ? 1 : TRIALS); i++)
+                {
                     Sync(&args);
                 }
             }
@@ -1249,7 +1214,7 @@ void * netpipe_main(void * arg) {
              * this.
              */
             if(bwdata[n].t == 0.0) {
-                bwdata[n].t = 0.000001;
+              bwdata[n].t = 0.000001;
             }
             
             tlast = bwdata[n].t;
@@ -1257,7 +1222,8 @@ void * netpipe_main(void * arg) {
             bwdata[n].bps = bwdata[n].bits / (bwdata[n].t * 1024 * 1024);
             bwdata[n].repeat = nrepeat;
             
-            if (args.tr) {
+            if (args.tr)
+            {
                 if(integCheck) {
                   fprintf(out,"%8d %d", bwdata[n].bits / 8, nrepeat);
 
@@ -1277,13 +1243,13 @@ void * netpipe_main(void * arg) {
                 FreeBuff(args.r_buff_orig, NULL);
             
             if ( args.tr ) {
-                if(integCheck) {
-                    fprintf(stderr, " Integrity check passed\n");
+               if(integCheck) {
+                 fprintf(stderr, " Integrity check passed\n");
 
-                } else {
-                    fprintf(stderr," %8.2lf Mbps in %10.2lf usec\n", 
-                            bwdata[n].bps, tlast*1.0e6);
-                }
+               } else {
+                 fprintf(stderr," %8.2lf Mbps in %10.2lf usec\n", 
+                         bwdata[n].bps, tlast*1.0e6);
+               }
             }
 
 
@@ -1291,19 +1257,17 @@ void * netpipe_main(void * arg) {
 
     } /* End of main loop  */
  
-    /* Free using original buffer addresses since we may have aligned
+   /* Free using original buffer addresses since we may have aligned
       r_buff and s_buff */
 
-    if (!args.cache) {
+   if (!args.cache) {
         FreeBuff(args.s_buff_orig, args.r_buff_orig);
-    }
-
+   }
     if (args.tr) fclose(out);
-
+         
     CleanUp(&args);
     return 0;
 }
-
 
 /* Return the current time in seconds, using a double precision number.      */
 double When() {
@@ -1387,6 +1351,7 @@ void VerifyIntegrity(ArgStruct *p) {
 
     }
 
+    cygnus_terminates();
 }  
     
 void PrintUsage() {
@@ -1571,44 +1536,3 @@ void FreeBuff(char *buff1, char *buff2) {
 }
 
 #endif
-
-int netpipe_test(void * arg) {
-    cygnus_init((struct cygnus_param *)arg);
-
-    int ret;
-    mthread_t mid;
-    
-    sail_init();
-    
-    mthread_attr_t attr;
-    attr.__data.schedpolicy = MTHREAD_LOCAL;
-    attr.__data.flags = 0x0;
-
-    /* Create polling thread */
-    if((ret = mthread_create(&mid, &attr, netpipe_main, arg)) < 0) {
-        fprintf(stdout, "mthread_create() error: %d\n", ret);
-        exit(1);
-    } else {
-        fprintf(stdout, "[%s on core %d] netpipe_main() create done(mid: %lu)\n", __func__, lcore_id, mid);
-    }
-
-    /* Test mthread_join */
-    if ((ret = mthread_join(mid, NULL)) < 0) {
-        fprintf(stdout, "mthread_join() error: %d\n", ret);
-        exit(1);
-    }
-
-    fprintf(stdout, "[%s on core %d] mthread %lu joined!\n", __func__, lcore_id, mid);
-
-    sail_exit();
-}
-
-int main(int argc, char ** argv) {
-    struct cygnus_param * param = cygnus_config(argc, argv);
-
-    cygnus_spawn(netpipe_test, param);
-
-    fprintf(stdout, " [%s on core %d] test finished, return from main", __func__, lcore_id);
-
-    return 0;
-}
