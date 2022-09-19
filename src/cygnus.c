@@ -357,6 +357,10 @@ int main(int argc, char **argv)
 {
     cygnus_start();
 
+    for (int i = 0; i < argc; i++) {
+        fprintf(stdout, " argv[%d]: %s\n", i, argv[i]);
+    }
+
     FILE        *out;           /* Output data file                          */
     char        s[255],s2[255],delim[255],*pstr; /* Generic strings          */
     int         *memcache;      /* used to flush cache                       */
