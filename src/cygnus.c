@@ -353,14 +353,7 @@ static struct option opts[] = {
     {0,0,0,0}
 };
 
-int main(int argc, char **argv)
-{
-    cygnus_start();
-
-    for (int i = 0; i < argc; i++) {
-        fprintf(stdout, " argv[%d]: %s\n", i, argv[i]);
-    }
-
+int cygnus_main(int argc, char **argv) {
     FILE        *out;           /* Output data file                          */
     char        s[255],s2[255],delim[255],*pstr; /* Generic strings          */
     int         *memcache;      /* used to flush cache                       */
@@ -1270,6 +1263,19 @@ int main(int argc, char **argv)
     if (args.tr) fclose(out);
          
     CleanUp(&args);
+
+    return 0;
+}
+
+int main(int argc, char **argv)
+{
+    cygnus_start();
+
+    for (int i = 0; i < argc; i++) {
+        fprintf(stdout, " argv[%d]: %s\n", i, argv[i]);
+    }
+
+    cygnus_main(argc, argv);
 
     cygnus_terminate();
 
