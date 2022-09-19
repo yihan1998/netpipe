@@ -284,7 +284,7 @@ atoll: $(SRC)/atoll.c $(SRC)/netpipe.c $(SRC)/netpipe.h
 CYGNUS_DIR = /home/yihan/cygnus
 CYGNUS_CFLAGS = -O3 -g -fno-stack-protector -fPIC
 CYGNUS_INC = -I/usr/include/ -I$(CYGNUS_DIR)/Cygnus/include/
-CYGNUS_LIB = -L$(CYGNUS_DIR)/Cygnus -lcygnus -lpthread
+CYGNUS_LIB = -L$(CYGNUS_DIR)/Cygnus/build -lcygnus -lpthread
 
 # DPDK
 LIBDPDK_CFLAGS := $(shell pkg-config --cflags libdpdk)
