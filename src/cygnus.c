@@ -34,7 +34,7 @@ void Setup(ArgStruct *p) {
     bzero((char *) lsin1, sizeof(*lsin1));
     bzero((char *) lsin2, sizeof(*lsin2));  
 
-    if ((sockfd = cygnus_socket(socket_family, SOCK_STREAM, 0)) < 0){ 
+    if ((sockfd = socket(socket_family, SOCK_STREAM, 0)) < 0){ 
         printf("NetPIPE: can't open stream socket! errno=%d\n", errno);
         exit(-4);
     }
@@ -215,7 +215,7 @@ void SendData(ArgStruct *p) {
     bytesLeft = p->bufflen;
     bytesWritten = 0;
     q = p->s_ptr;
-    while (bytesLeft > 0 && (bytesWritten = cygnus_write(p->commfd, q, bytesLeft)) > 0) {
+    while (bytesLeft > 0 && (bytesWritten = write(p->commfd, q, bytesLeft)) > 0) {
         bytesLeft -= bytesWritten;
         q += bytesWritten;
     }
@@ -1266,6 +1266,9 @@ int main(int argc, char **argv)
     if (args.tr) fclose(out);
          
     CleanUp(&args);
+
+    cygnus_terminate();
+
     return 0;
 }
 
@@ -1351,7 +1354,6 @@ void VerifyIntegrity(ArgStruct *p) {
 
     }
 
-    cygnus_terminates();
 }  
     
 void PrintUsage() {
