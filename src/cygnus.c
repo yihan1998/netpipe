@@ -112,6 +112,7 @@ void establish(ArgStruct *p) {
         /* SERVER */
         listen(p->servicefd, 5);
         p->commfd = accept(p->servicefd, (struct sockaddr *) &(p->prot.sin2), &clen);
+        printf("Server: Accept new connection via sock %d!", p->commfd);
 
         if(p->commfd < 0){
             printf("Server: Accept Failed! errno=%d\n",errno);

@@ -247,7 +247,6 @@ readFully(int fd, void *obuf, int len)
         else
           break;
       }
-      
       bytesLeft -= bytesRead;
       buf += bytesRead;
     }
@@ -333,6 +332,7 @@ void RecvData(ArgStruct *p)
             break;
         }
         
+        printf("NetPIPE: server: read %d bytes, left %d bytes!\n", bytesRead, bytesLeft);
         bytesLeft -= bytesRead;
         q += bytesRead;
       }
@@ -472,6 +472,7 @@ void establish(ArgStruct *p)
     /* SERVER */
     mtcp_listen(mctx, p->servicefd, 5);
     p->commfd = mtcp_accept_helper(mctx, p->servicefd, (struct sockaddr *) &(p->prot.sin2), &clen);
+    printf("Server: Accept new connection: %d\n", p->commfd);
     while (p->commfd < 0 && errno == EAGAIN) {
       p->commfd = mtcp_accept_helper(mctx, p->servicefd, (struct sockaddr *) &(p->prot.sin2), &clen);
     }
