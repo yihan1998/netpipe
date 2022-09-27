@@ -281,16 +281,20 @@ atoll: $(SRC)/atoll.c $(SRC)/netpipe.c $(SRC)/netpipe.h
         $(SRC)/atoll.c -o NPatoll \
         -I$(PALMS_PATH)/include -L$(PALMS_PATH)/lib -latoll
 
-CYGNUS_DIR = /home/yihan/cygnus
-CYGNUS_CFLAGS = -O3 -g -fno-stack-protector -fPIC
-CYGNUS_INC = -I/usr/include/ -I$(CYGNUS_DIR)/Cygnus/include/
-CYGNUS_LIB = -L$(CYGNUS_DIR)/Cygnus/build -lcygnus -lpthread
+CYGNUS_DIR	= /home/yihan/cygnus
+CYGNUS_CFLAGS	= -O3 -g -fno-stack-protector -fPIC
+CYGNUS_INC	= -I/usr/include/ -I$(CYGNUS_DIR)/Cygnus/include/
+CYGNUS_LIB	= -L$(CYGNUS_DIR)/Cygnus/build -lcygnus -lpthread
+
+HOARD_DIR	= /home/yihan/Hoard/src
+HOARD_LIB	= -L$(HOARD_DIR) -lhoard
 
 # DPDK
 LIBDPDK_CFLAGS := $(shell pkg-config --cflags libdpdk)
 LIBDPDK_LDFLAGS := $(shell pkg-config --libs libdpdk)
+
 CYGNUS_CFLAGS += $(LIBDPDK_CFLAGS)
-CYGNUS_LIB += $(LIBDPDK_LDFLAGS)
+CYGNUS_LIB += $(LIBDPDK_LDFLAGS) $(HOARD_LIB)
 
 cygnus: $(SRC)/cygnus.c $(SRC)/netpipe.h 
 	$(CC) $(CYGNUS_CFLAGS) $(SRC)/cygnus.c -o NPcygnus \
