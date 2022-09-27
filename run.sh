@@ -16,8 +16,7 @@ case $1 in
         ;;
     "cygnus")
         LD_LIBRARY_PATH=/home/yihan/cygnus/Cygnus:/home/yihan/cygnus/mthread:/home/yihan/Hoard \
-        ./NPcygnus  --perturbation=0 --start=1 --end=32768 --port=80 --repeat=1024 --host=10.0.0.1 --output=cygnus.txt \
-                    --num_cores=1 --test_time=120 --config_path=/home/yihan/cygnus/test/config
+        ./NPcygnus -p 0 -l 1 -u 9000 -P 80 -n 1024 "${args}"
         ;;
     *)
         echo "Wrong test!"
