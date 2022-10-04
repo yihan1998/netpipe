@@ -332,7 +332,6 @@ void RecvData(ArgStruct *p)
             break;
         }
         
-        printf("NetPIPE: server: read %d bytes, left %d bytes!\n", bytesRead, bytesLeft);
         bytesLeft -= bytesRead;
         q += bytesRead;
       }
